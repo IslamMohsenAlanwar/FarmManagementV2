@@ -1,0 +1,17 @@
+D:\Projects\FarmManagement.API\out\FarmManagement.API.exe
+D:\Projects\FarmManagement.API\out\appsettings.Development.json
+D:\Projects\FarmManagement.API\out\appsettings.json
+D:\Projects\FarmManagement.API\out\FarmManagement.API.dll
+D:\Projects\FarmManagement.API\out\FarmManagement.API.runtimeconfig.json
+D:\Projects\FarmManagement.API\out\FarmManagement.API.pdb
+D:\Projects\FarmManagement.API\out\Microsoft.AspNetCore.OpenApi.dll
+D:\Projects\FarmManagement.API\out\Microsoft.EntityFrameworkCore.dll
+D:\Projects\FarmManagement.API\out\Microsoft.EntityFrameworkCore.Abstractions.dll
+D:\Projects\FarmManagement.API\out\Microsoft.EntityFrameworkCore.Relational.dll
+D:\Projects\FarmManagement.API\out\Microsoft.OpenApi.dll
+D:\Projects\FarmManagement.API\out\Npgsql.dll
+D:\Projects\FarmManagement.API\out\Npgsql.EntityFrameworkCore.PostgreSQL.dll
+D:\Projects\FarmManagement.API\out\Swashbuckle.AspNetCore.Swagger.dll
+D:\Projects\FarmManagement.API\out\Swashbuckle.AspNetCore.SwaggerGen.dll
+D:\Projects\FarmManagement.API\out\Swashbuckle.AspNetCore.SwaggerUI.dll
+D:\Projects\FarmManagement.API\out\FarmManagement.API.deps.json
