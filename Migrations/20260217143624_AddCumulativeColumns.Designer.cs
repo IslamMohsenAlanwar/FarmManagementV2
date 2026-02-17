@@ -4,6 +4,7 @@ using FarmManagement.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FarmManagement.API.Migrations
 {
     [DbContext(typeof(FarmDbContext))]
-    partial class FarmDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260217143624_AddCumulativeColumns")]
+    partial class AddCumulativeColumns
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -47,7 +50,7 @@ namespace FarmManagement.API.Migrations
 
                     b.HasIndex("WorkerId");
 
-                    b.ToTable("Advances", (string)null);
+                    b.ToTable("Advances");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.AssetItem", b =>
@@ -64,7 +67,7 @@ namespace FarmManagement.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AssetItems", (string)null);
+                    b.ToTable("AssetItems");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.AssetTransaction", b =>
@@ -98,7 +101,7 @@ namespace FarmManagement.API.Migrations
 
                     b.HasIndex("TargetBarnId");
 
-                    b.ToTable("AssetTransactions", (string)null);
+                    b.ToTable("AssetTransactions");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.AssetWarehouse", b =>
@@ -121,7 +124,7 @@ namespace FarmManagement.API.Migrations
                     b.HasIndex("FarmId")
                         .IsUnique();
 
-                    b.ToTable("AssetWarehouses", (string)null);
+                    b.ToTable("AssetWarehouses");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.AssetWarehouseItem", b =>
@@ -160,7 +163,7 @@ namespace FarmManagement.API.Migrations
 
                     b.HasIndex("AssetWarehouseId");
 
-                    b.ToTable("AssetWarehouseItems", (string)null);
+                    b.ToTable("AssetWarehouseItems");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.Barn", b =>
@@ -185,7 +188,7 @@ namespace FarmManagement.API.Migrations
 
                     b.HasIndex("FarmId");
 
-                    b.ToTable("Barns", (string)null);
+                    b.ToTable("Barns");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.Cycle", b =>
@@ -230,7 +233,7 @@ namespace FarmManagement.API.Migrations
 
                     b.HasIndex("FarmId");
 
-                    b.ToTable("Cycles", (string)null);
+                    b.ToTable("Cycles");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.DailyFeedConsumption", b =>
@@ -261,7 +264,7 @@ namespace FarmManagement.API.Migrations
 
                     b.HasIndex("ItemId");
 
-                    b.ToTable("DailyFeedConsumptions", (string)null);
+                    b.ToTable("DailyFeedConsumptions");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.DailyMedicineConsumption", b =>
@@ -292,7 +295,7 @@ namespace FarmManagement.API.Migrations
 
                     b.HasIndex("ItemId");
 
-                    b.ToTable("DailyMedicineConsumptions", (string)null);
+                    b.ToTable("DailyMedicineConsumptions");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.DailyRecord", b =>
@@ -328,7 +331,7 @@ namespace FarmManagement.API.Migrations
 
                     b.HasIndex("CycleId");
 
-                    b.ToTable("DailyRecords", (string)null);
+                    b.ToTable("DailyRecords");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.EggProductionRecord", b =>
@@ -378,7 +381,7 @@ namespace FarmManagement.API.Migrations
 
                     b.HasIndex("FarmId");
 
-                    b.ToTable("EggProductionRecords", (string)null);
+                    b.ToTable("EggProductionRecords");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.EggSale", b =>
@@ -427,7 +430,7 @@ namespace FarmManagement.API.Migrations
 
                     b.HasIndex("WarehouseId");
 
-                    b.ToTable("EggSales", (string)null);
+                    b.ToTable("EggSales");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.Farm", b =>
@@ -448,7 +451,7 @@ namespace FarmManagement.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Farms", (string)null);
+                    b.ToTable("Farms");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.FeedMix", b =>
@@ -478,7 +481,7 @@ namespace FarmManagement.API.Migrations
 
                     b.HasIndex("FeedTypeId");
 
-                    b.ToTable("FeedMixes", (string)null);
+                    b.ToTable("FeedMixes");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.FeedMixDetail", b =>
@@ -509,7 +512,7 @@ namespace FarmManagement.API.Migrations
 
                     b.HasIndex("ItemId");
 
-                    b.ToTable("FeedMixDetails", (string)null);
+                    b.ToTable("FeedMixDetails");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.FeedType", b =>
@@ -526,7 +529,7 @@ namespace FarmManagement.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("FeedTypes", (string)null);
+                    b.ToTable("FeedTypes");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.Item", b =>
@@ -550,7 +553,7 @@ namespace FarmManagement.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Items", (string)null);
+                    b.ToTable("Items");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.Trader", b =>
@@ -578,7 +581,7 @@ namespace FarmManagement.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Traders", (string)null);
+                    b.ToTable("Traders");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.Vacation", b =>
@@ -608,7 +611,7 @@ namespace FarmManagement.API.Migrations
 
                     b.HasIndex("WorkerId");
 
-                    b.ToTable("Vacations", (string)null);
+                    b.ToTable("Vacations");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.Warehouse", b =>
@@ -631,7 +634,7 @@ namespace FarmManagement.API.Migrations
                     b.HasIndex("FarmId")
                         .IsUnique();
 
-                    b.ToTable("Warehouses", (string)null);
+                    b.ToTable("Warehouses");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.WarehouseItem", b =>
@@ -670,7 +673,7 @@ namespace FarmManagement.API.Migrations
 
                     b.HasIndex("WarehouseId");
 
-                    b.ToTable("WarehouseItems", (string)null);
+                    b.ToTable("WarehouseItems");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.WarehouseTransaction", b =>
@@ -727,7 +730,7 @@ namespace FarmManagement.API.Migrations
 
                     b.HasIndex("WarehouseId");
 
-                    b.ToTable("WarehouseTransactions", (string)null);
+                    b.ToTable("WarehouseTransactions");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.Worker", b =>
@@ -759,7 +762,7 @@ namespace FarmManagement.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Workers", (string)null);
+                    b.ToTable("Workers");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.Advance", b =>

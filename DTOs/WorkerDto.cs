@@ -49,6 +49,7 @@ public class VacationRecordDto
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public int Days { get; set; }
+ public int CumulativeDays { get; set; }
 }
 
 public class AdvanceRecordDto
@@ -57,6 +58,8 @@ public class AdvanceRecordDto
     public string WorkerName { get; set; } = string.Empty;
     public decimal Amount { get; set; }
     public DateTime Date { get; set; }
+    public decimal CumulativeAmount { get; set; }
+
 }
 
 

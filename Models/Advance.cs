@@ -6,7 +6,8 @@ public class Advance
     public int WorkerId { get; set; }
     public Worker? Worker { get; set; }
 
-    public decimal Amount { get; set; }      // قيمة السلفة
-    public DateTime Date { get; set; }       // تاريخ السلفة
+    public decimal Amount { get; set; }  
+    public DateTime Date { get; set; }  
+    public decimal CumulativeAmount { get; set; }  
 }
 }

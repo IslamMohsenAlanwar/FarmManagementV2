@@ -114,6 +114,8 @@ namespace FarmManagement.API.Controllers
             return NoContent();
         }
 
+        // ===================== VACATIONS =====================
+
         [HttpPost("vacation")]
         public async Task<IActionResult> AddVacation([FromBody] CreateVacationDto dto)
         {
@@ -121,10 +123,17 @@ namespace FarmManagement.API.Controllers
             if (worker == null) return NotFound("Worker not found");
 
             int daysRequested = (dto.EndDate - dto.StartDate).Days + 1;
+
             if (daysRequested > worker.VacationDays)
                 return BadRequest("عدد أيام الإجازة أكبر من المتاح");
 
             worker.VacationDays -= daysRequested;
+
+            var lastCumulative = await _context.Vacations
+                .Where(v => v.WorkerId == dto.WorkerId)
+                .OrderByDescending(v => v.Id)
+                .Select(v => v.CumulativeDays)
+                .FirstOrDefaultAsync();
 
             var vacation = new Vacation
             {
@@ -132,31 +141,13 @@ namespace FarmManagement.API.Controllers
                 StartDate = dto.StartDate,
                 EndDate = dto.EndDate,
                 Days = daysRequested,
-                Worker = null 
+                CumulativeDays = lastCumulative + daysRequested
             };
 
             _context.Vacations.Add(vacation);
             await _context.SaveChangesAsync();
+
             return Ok(vacation);
-        }
-
-        [HttpPost("advance")]
-        public async Task<IActionResult> AddAdvance([FromBody] CreateAdvanceDto dto)
-        {
-            var worker = await _context.Workers.FindAsync(dto.WorkerId);
-            if (worker == null) return NotFound("Worker not found");
-
-            var advance = new Advance
-            {
-                WorkerId = worker.Id,
-                Amount = dto.Amount,
-                Date = dto.Date,
-                Worker = null 
-            };
-
-            _context.Advances.Add(advance);
-            await _context.SaveChangesAsync();
-            return Ok(advance);
         }
 
         [HttpGet("vacations")]
@@ -164,13 +155,15 @@ namespace FarmManagement.API.Controllers
         {
             var vacations = await _context.Vacations
                 .Include(v => v.Worker)
+                .OrderBy(v => v.StartDate)
                 .Select(v => new VacationRecordDto
                 {
                     Id = v.Id,
-                    WorkerName = v.Worker != null ? v.Worker.Name : "Unknown",
+                    WorkerName = v.Worker!.Name,
                     StartDate = v.StartDate,
                     EndDate = v.EndDate,
-                    Days = v.Days
+                    Days = v.Days,
+                    CumulativeDays = v.CumulativeDays
                 })
                 .ToListAsync();
 
@@ -185,18 +178,47 @@ namespace FarmManagement.API.Controllers
 
             var vacations = await _context.Vacations
                 .Where(v => v.WorkerId == workerId)
-                .Include(v => v.Worker)
+                .OrderBy(v => v.StartDate)
                 .Select(v => new VacationRecordDto
                 {
                     Id = v.Id,
                     WorkerName = worker.Name,
                     StartDate = v.StartDate,
                     EndDate = v.EndDate,
-                    Days = v.Days
+                    Days = v.Days,
+                    CumulativeDays = v.CumulativeDays
                 })
                 .ToListAsync();
 
             return Ok(vacations);
+        }
+
+        // ===================== ADVANCES =====================
+
+        [HttpPost("advance")]
+        public async Task<IActionResult> AddAdvance([FromBody] CreateAdvanceDto dto)
+        {
+            var worker = await _context.Workers.FindAsync(dto.WorkerId);
+            if (worker == null) return NotFound("Worker not found");
+
+            var lastCumulative = await _context.Advances
+                .Where(a => a.WorkerId == dto.WorkerId)
+                .OrderByDescending(a => a.Id)
+                .Select(a => a.CumulativeAmount)
+                .FirstOrDefaultAsync();
+
+            var advance = new Advance
+            {
+                WorkerId = worker.Id,
+                Amount = dto.Amount,
+                Date = dto.Date,
+                CumulativeAmount = lastCumulative + dto.Amount
+            };
+
+            _context.Advances.Add(advance);
+            await _context.SaveChangesAsync();
+
+            return Ok(advance);
         }
 
         [HttpGet("advances")]
@@ -204,12 +226,14 @@ namespace FarmManagement.API.Controllers
         {
             var advances = await _context.Advances
                 .Include(a => a.Worker)
+                .OrderBy(a => a.Date)
                 .Select(a => new AdvanceRecordDto
                 {
                     Id = a.Id,
-                    WorkerName = a.Worker != null ? a.Worker.Name : "Unknown",
+                    WorkerName = a.Worker!.Name,
                     Amount = a.Amount,
-                    Date = a.Date
+                    Date = a.Date,
+                    CumulativeAmount = a.CumulativeAmount
                 })
                 .ToListAsync();
 
@@ -224,18 +248,18 @@ namespace FarmManagement.API.Controllers
 
             var advances = await _context.Advances
                 .Where(a => a.WorkerId == workerId)
-                .Include(a => a.Worker)
+                .OrderBy(a => a.Date)
                 .Select(a => new AdvanceRecordDto
                 {
                     Id = a.Id,
                     WorkerName = worker.Name,
                     Amount = a.Amount,
-                    Date = a.Date
+                    Date = a.Date,
+                    CumulativeAmount = a.CumulativeAmount
                 })
                 .ToListAsync();
 
             return Ok(advances);
         }
-
     }
 }

@@ -8,7 +8,8 @@ public class Vacation
 
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
-    public int Days { get; set; }        // عدد الأيام
+    public int Days { get; set; }   
+      public int CumulativeDays { get; set; }   
 }
 
 }
