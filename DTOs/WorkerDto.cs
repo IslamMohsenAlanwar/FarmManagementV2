@@ -42,5 +42,22 @@ public class CreateAdvanceDto
     public required DateTime Date { get; set; }
 }
 
+public class VacationRecordDto
+{
+    public int Id { get; set; }
+    public string WorkerName { get; set; } = string.Empty;
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public int Days { get; set; }
+}
+
+public class AdvanceRecordDto
+{
+    public int Id { get; set; }
+    public string WorkerName { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public DateTime Date { get; set; }
+}
+
 
 }

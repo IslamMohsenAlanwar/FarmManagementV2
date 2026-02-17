@@ -17,7 +17,6 @@ namespace FarmManagement.API.Controllers
             _context = context;
         }
 
-        // ======= تحويل الرقم للـ enum =======
         private static WorkerRole RoleFromNumber(int number) => number switch
         {
             1 => WorkerRole.FarmManager,
@@ -26,7 +25,6 @@ namespace FarmManagement.API.Controllers
             _ => throw new ArgumentException("Invalid role number")
         };
 
-        // ======= تحويل الـ enum لنص =======
         private static string RoleToString(WorkerRole role) => role switch
         {
             WorkerRole.FarmManager => "FarmManager",
@@ -35,7 +33,6 @@ namespace FarmManagement.API.Controllers
             _ => "Unknown"
         };
 
-        // ======= إنشاء عامل جديد =======
         [HttpPost]
         public async Task<ActionResult<WorkerDto>> AddWorker([FromBody] CreateWorkerDto dto)
         {
@@ -64,7 +61,6 @@ namespace FarmManagement.API.Controllers
             return CreatedAtAction(nameof(GetWorkerById), new { id = worker.Id }, result);
         }
 
-        // ======= جلب كل العمال =======
         [HttpGet]
         public async Task<ActionResult<IEnumerable<WorkerDto>>> GetWorkers()
         {
@@ -83,7 +79,6 @@ namespace FarmManagement.API.Controllers
             return Ok(result);
         }
 
-        // ======= جلب عامل بالـ id =======
         [HttpGet("{id}")]
         public async Task<ActionResult<WorkerDto>> GetWorkerById(int id)
         {
@@ -103,7 +98,6 @@ namespace FarmManagement.API.Controllers
             return Ok(result);
         }
 
-        // ======= تحديث عامل =======
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateWorker(int id, [FromBody] UpdateWorkerDto dto)
         {
@@ -120,7 +114,6 @@ namespace FarmManagement.API.Controllers
             return NoContent();
         }
 
-        // ======= إضافة إجازة =======
         [HttpPost("vacation")]
         public async Task<IActionResult> AddVacation([FromBody] CreateVacationDto dto)
         {
@@ -139,7 +132,7 @@ namespace FarmManagement.API.Controllers
                 StartDate = dto.StartDate,
                 EndDate = dto.EndDate,
                 Days = daysRequested,
-                Worker = null // nullable، مش محتاج تحددها
+                Worker = null 
             };
 
             _context.Vacations.Add(vacation);
@@ -147,7 +140,6 @@ namespace FarmManagement.API.Controllers
             return Ok(vacation);
         }
 
-        // ======= إضافة سلفة =======
         [HttpPost("advance")]
         public async Task<IActionResult> AddAdvance([FromBody] CreateAdvanceDto dto)
         {
@@ -159,12 +151,91 @@ namespace FarmManagement.API.Controllers
                 WorkerId = worker.Id,
                 Amount = dto.Amount,
                 Date = dto.Date,
-                Worker = null // nullable، مش محتاج تحددها
+                Worker = null 
             };
 
             _context.Advances.Add(advance);
             await _context.SaveChangesAsync();
             return Ok(advance);
         }
+
+        [HttpGet("vacations")]
+        public async Task<ActionResult<IEnumerable<VacationRecordDto>>> GetAllVacations()
+        {
+            var vacations = await _context.Vacations
+                .Include(v => v.Worker)
+                .Select(v => new VacationRecordDto
+                {
+                    Id = v.Id,
+                    WorkerName = v.Worker != null ? v.Worker.Name : "Unknown",
+                    StartDate = v.StartDate,
+                    EndDate = v.EndDate,
+                    Days = v.Days
+                })
+                .ToListAsync();
+
+            return Ok(vacations);
+        }
+
+        [HttpGet("vacations/{workerId}")]
+        public async Task<ActionResult<IEnumerable<VacationRecordDto>>> GetVacationsByWorker(int workerId)
+        {
+            var worker = await _context.Workers.FindAsync(workerId);
+            if (worker == null) return NotFound("Worker not found");
+
+            var vacations = await _context.Vacations
+                .Where(v => v.WorkerId == workerId)
+                .Include(v => v.Worker)
+                .Select(v => new VacationRecordDto
+                {
+                    Id = v.Id,
+                    WorkerName = worker.Name,
+                    StartDate = v.StartDate,
+                    EndDate = v.EndDate,
+                    Days = v.Days
+                })
+                .ToListAsync();
+
+            return Ok(vacations);
+        }
+
+        [HttpGet("advances")]
+        public async Task<ActionResult<IEnumerable<AdvanceRecordDto>>> GetAllAdvances()
+        {
+            var advances = await _context.Advances
+                .Include(a => a.Worker)
+                .Select(a => new AdvanceRecordDto
+                {
+                    Id = a.Id,
+                    WorkerName = a.Worker != null ? a.Worker.Name : "Unknown",
+                    Amount = a.Amount,
+                    Date = a.Date
+                })
+                .ToListAsync();
+
+            return Ok(advances);
+        }
+
+        [HttpGet("advances/{workerId}")]
+        public async Task<ActionResult<IEnumerable<AdvanceRecordDto>>> GetAdvancesByWorker(int workerId)
+        {
+            var worker = await _context.Workers.FindAsync(workerId);
+            if (worker == null) return NotFound("Worker not found");
+
+            var advances = await _context.Advances
+                .Where(a => a.WorkerId == workerId)
+                .Include(a => a.Worker)
+                .Select(a => new AdvanceRecordDto
+                {
+                    Id = a.Id,
+                    WorkerName = worker.Name,
+                    Amount = a.Amount,
+                    Date = a.Date
+                })
+                .ToListAsync();
+
+            return Ok(advances);
+        }
+
     }
 }
