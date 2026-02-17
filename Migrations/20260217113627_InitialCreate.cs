@@ -83,6 +83,23 @@ namespace FarmManagement.API.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Workers",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Phone = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    Role = table.Column<int>(type: "int", nullable: false),
+                    Salary = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    VacationDays = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Workers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "AssetWarehouses",
                 columns: table => new
                 {
@@ -161,6 +178,49 @@ namespace FarmManagement.API.Migrations
                         name: "FK_FeedMixes_FeedTypes_FeedTypeId",
                         column: x => x.FeedTypeId,
                         principalTable: "FeedTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Advances",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    WorkerId = table.Column<int>(type: "int", nullable: false),
+                    Amount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    Date = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Advances", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Advances_Workers_WorkerId",
+                        column: x => x.WorkerId,
+                        principalTable: "Workers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Vacations",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    WorkerId = table.Column<int>(type: "int", nullable: false),
+                    StartDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    EndDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Days = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Vacations", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Vacations_Workers_WorkerId",
+                        column: x => x.WorkerId,
+                        principalTable: "Workers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -520,6 +580,11 @@ namespace FarmManagement.API.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "IX_Advances_WorkerId",
+                table: "Advances",
+                column: "WorkerId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_AssetTransactions_AssetWarehouseItemId",
                 table: "AssetTransactions",
                 column: "AssetWarehouseItemId");
@@ -626,6 +691,11 @@ namespace FarmManagement.API.Migrations
                 column: "FeedTypeId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Vacations_WorkerId",
+                table: "Vacations",
+                column: "WorkerId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_WarehouseItems_ItemId",
                 table: "WarehouseItems",
                 column: "ItemId");
@@ -671,6 +741,9 @@ namespace FarmManagement.API.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
+                name: "Advances");
+
+            migrationBuilder.DropTable(
                 name: "AssetTransactions");
 
             migrationBuilder.DropTable(
@@ -681,6 +754,9 @@ namespace FarmManagement.API.Migrations
 
             migrationBuilder.DropTable(
                 name: "FeedMixDetails");
+
+            migrationBuilder.DropTable(
+                name: "Vacations");
 
             migrationBuilder.DropTable(
                 name: "WarehouseItems");
@@ -696,6 +772,9 @@ namespace FarmManagement.API.Migrations
 
             migrationBuilder.DropTable(
                 name: "FeedMixes");
+
+            migrationBuilder.DropTable(
+                name: "Workers");
 
             migrationBuilder.DropTable(
                 name: "EggProductionRecords");

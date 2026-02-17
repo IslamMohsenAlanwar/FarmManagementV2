@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using FarmManagement.API.Models;
 
 namespace FarmManagement.API.Data
@@ -22,15 +22,22 @@ namespace FarmManagement.API.Data
         public DbSet<Warehouse> Warehouses { get; set; } = null!;
         public DbSet<WarehouseItem> WarehouseItems { get; set; } = null!;
         public DbSet<WarehouseTransaction> WarehouseTransactions { get; set; } = null!;
-        
+
         // ======== Asset Tables ========
         public DbSet<AssetItem> AssetItems { get; set; } = null!;
         public DbSet<AssetWarehouse> AssetWarehouses { get; set; } = null!;
         public DbSet<AssetWarehouseItem> AssetWarehouseItems { get; set; } = null!;
         public DbSet<AssetTransaction> AssetTransactions { get; set; } = null!;
-        
-        public DbSet<EggProductionRecord> EggProductionRecords { get; set; } = null!; 
-        public DbSet<EggSale> EggSales { get; set; } = null!; 
+
+        public DbSet<EggProductionRecord> EggProductionRecords { get; set; } = null!;
+        public DbSet<EggSale> EggSales { get; set; } = null!;
+
+        // ======== Workers Table ========
+        public DbSet<Worker> Workers { get; set; } = null!; 
+
+        // ======== Vacations & Advances ========
+        public DbSet<Vacation> Vacations { get; set; } = null!;
+        public DbSet<Advance> Advances { get; set; } = null!;
 
         // ================= SaveChanges Precision =================
         public override int SaveChanges() => base.SaveChanges();
@@ -42,7 +49,7 @@ namespace FarmManagement.API.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // ================= Precision  =================
+            // ================= Precision Config =================
             modelBuilder.Entity<EggSale>(e =>
             {
                 e.Property(s => s.Quantity).HasPrecision(18, 2);
@@ -100,7 +107,43 @@ namespace FarmManagement.API.Data
                 e.Property(r => r.ProductionRate).HasPrecision(5, 2);
             });
 
+            // ================= Workers Configuration =================
+            modelBuilder.Entity<Worker>(w =>
+            {
+                w.HasKey(x => x.Id);
+                w.Property(x => x.Name).IsRequired().HasMaxLength(100);
+                w.Property(x => x.Phone).HasMaxLength(20);
+                w.Property(x => x.Role).IsRequired();
+                w.Property(x => x.Salary).HasPrecision(18, 2);
+                w.Property(x => x.VacationDays);
+            });
 
+            // ================= Vacation Configuration =================
+            modelBuilder.Entity<Vacation>(v =>
+            {
+                v.HasKey(x => x.Id);
+                v.HasOne(x => x.Worker)
+                 .WithMany()
+                 .HasForeignKey(x => x.WorkerId)
+                 .OnDelete(DeleteBehavior.Cascade);
+                v.Property(x => x.Days);
+                v.Property(x => x.StartDate);
+                v.Property(x => x.EndDate);
+            });
+
+            // ================= Advance Configuration =================
+            modelBuilder.Entity<Advance>(a =>
+            {
+                a.HasKey(x => x.Id);
+                a.HasOne(x => x.Worker)
+                 .WithMany()
+                 .HasForeignKey(x => x.WorkerId)
+                 .OnDelete(DeleteBehavior.Cascade);
+                a.Property(x => x.Amount).HasPrecision(18, 2);
+                a.Property(x => x.Date);
+            });
+
+            // ================= Relationships (Existing) =================
             // Barn -> Farm
             modelBuilder.Entity<Barn>()
                 .HasOne(b => b.Farm)
@@ -200,7 +243,6 @@ namespace FarmManagement.API.Data
 
             modelBuilder.Entity<EggProductionRecord>()
                 .HasOne(r => r.Cycle).WithMany(c => c.EggProductionRecords).HasForeignKey(r => r.CycleId).OnDelete(DeleteBehavior.Cascade);
-
 
             // AssetWarehouse -> Farm
             modelBuilder.Entity<AssetWarehouse>()
