@@ -36,7 +36,7 @@ namespace FarmManagement.API.Controllers
                     Id = d.Id,
                     CycleId = d.CycleId,
                     Date = egyptDate,
-                    DayName = TimeZoneHelper.GetArabicDayName(egyptDate), // 🆕
+                    DayName = TimeZoneHelper.GetArabicDayName(egyptDate),
                     DayNumber = d.DayNumber,
                     ChickAge = d.ChickAge,
                     DeadCount = d.DeadCount,
@@ -64,21 +64,18 @@ namespace FarmManagement.API.Controllers
         [HttpPost]
         public async Task<ActionResult<DailyRecordDto>> CreateDailyRecord(DailyRecordCreateDto dto)
         {
-        var cycle = await _context.Cycles
-    .AsSplitQuery()
-    .Include(c => c.DailyRecords)
-        .ThenInclude(d => d.FeedConsumptions)
-    .Include(c => c.DailyRecords)
-        .ThenInclude(d => d.MedicineConsumptions)
-    .FirstOrDefaultAsync(c => c.Id == dto.CycleId);
+            // جلب الدورة
+            var cycle = await _context.Cycles
+                .Include(c => c.DailyRecords)
+                    .ThenInclude(d => d.FeedConsumptions)
+                .Include(c => c.DailyRecords)
+                    .ThenInclude(d => d.MedicineConsumptions)
+                .FirstOrDefaultAsync(c => c.Id == dto.CycleId);
 
             if (cycle == null) return BadRequest("Cycle not found.");
 
             var lastRecord = cycle.DailyRecords.OrderByDescending(d => d.Date).FirstOrDefault();
-
-            var recordDate = lastRecord != null
-                ? lastRecord.Date.AddDays(1)
-                : DateTime.UtcNow.Date;
+            var recordDate = lastRecord != null ? lastRecord.Date.AddDays(1) : DateTime.UtcNow.Date;
 
             int previousDeadCumulative = lastRecord?.DeadCumulative ?? 0;
             int remainingChicks = Math.Max(0, cycle.ChickCount - (previousDeadCumulative + dto.DeadCount));
@@ -91,10 +88,60 @@ namespace FarmManagement.API.Controllers
                 ChickAge = cycle.ChickAge + (lastRecord?.DayNumber ?? 0),
                 DeadCount = dto.DeadCount,
                 DeadCumulative = previousDeadCumulative + dto.DeadCount,
-                RemainingChicks = remainingChicks
+                RemainingChicks = remainingChicks,
+                FeedConsumptions = new List<DailyFeedConsumption>(),
+                MedicineConsumptions = new List<DailyMedicineConsumption>()
             };
 
-           
+            // ================= معالجة FeedConsumptions =================
+            foreach (var feedDto in dto.FeedConsumptions)
+            {
+                var warehouseItem = await _context.WarehouseItems
+                    .Include(w => w.Item)
+                    .FirstOrDefaultAsync(w => w.ItemId == feedDto.ItemId && w.WarehouseId == dto.WarehouseId);
+
+                if (warehouseItem == null)
+                    return BadRequest($"Item {feedDto.ItemId} not found in this warehouse.");
+
+                if (warehouseItem.Quantity < feedDto.Quantity)
+                    return BadRequest($"Not enough stock for item {warehouseItem.Item.Name}");
+
+                // خصم الكمية من المخزن
+                warehouseItem.Quantity -= feedDto.Quantity;
+                warehouseItem.Withdrawn += feedDto.Quantity;
+
+                // إضافة الاستهلاك اليومي
+                record.FeedConsumptions.Add(new DailyFeedConsumption
+                {
+                    ItemId = feedDto.ItemId,
+                    Quantity = feedDto.Quantity,
+                    Cost = feedDto.Quantity * warehouseItem.PricePerUnit
+                });
+            }
+
+            // ================= معالجة MedicineConsumptions =================
+            foreach (var medDto in dto.MedicineConsumptions)
+            {
+                var warehouseItem = await _context.WarehouseItems
+                    .Include(w => w.Item)
+                    .FirstOrDefaultAsync(w => w.ItemId == medDto.ItemId && w.WarehouseId == dto.WarehouseId);
+
+                if (warehouseItem == null)
+                    return BadRequest($"Item {medDto.ItemId} not found in this warehouse.");
+
+                if (warehouseItem.Quantity < medDto.Quantity)
+                    return BadRequest($"Not enough stock for item {warehouseItem.Item.Name}");
+
+                warehouseItem.Quantity -= medDto.Quantity;
+                warehouseItem.Withdrawn += medDto.Quantity;
+
+                record.MedicineConsumptions.Add(new DailyMedicineConsumption
+                {
+                    ItemId = medDto.ItemId,
+                    Quantity = medDto.Quantity,
+                    Cost = medDto.Quantity * warehouseItem.PricePerUnit
+                });
+            }
 
             _context.DailyRecords.Add(record);
             await _context.SaveChangesAsync();
@@ -106,7 +153,7 @@ namespace FarmManagement.API.Controllers
                 Id = record.Id,
                 CycleId = record.CycleId,
                 Date = egyptDate,
-                DayName = TimeZoneHelper.GetArabicDayName(egyptDate), // 🆕
+                DayName = TimeZoneHelper.GetArabicDayName(egyptDate),
                 DayNumber = record.DayNumber,
                 ChickAge = record.ChickAge,
                 DeadCount = record.DeadCount,
@@ -115,14 +162,14 @@ namespace FarmManagement.API.Controllers
                 FeedConsumptions = record.FeedConsumptions.Select(f => new FeedConsumptionDto
                 {
                     ItemId = f.ItemId,
-                    ItemName = f.Item.Name,
+                    ItemName = f.Item?.Name ?? "غير محدد",
                     Quantity = f.Quantity,
                     Cost = f.Cost
                 }).ToList(),
                 MedicineConsumptions = record.MedicineConsumptions.Select(m => new MedicineConsumptionDto
                 {
                     ItemId = m.ItemId,
-                    ItemName = m.Item.Name,
+                    ItemName = m.Item?.Name ?? "غير محدد",
                     Quantity = m.Quantity,
                     Cost = m.Cost
                 }).ToList()

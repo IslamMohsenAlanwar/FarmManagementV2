@@ -37,6 +37,9 @@ namespace FarmManagement.API.Data
         public DbSet<Vacation> Vacations { get; set; } = null!;
         public DbSet<Advance> Advances { get; set; } = null!;
 
+public DbSet<ChickenSale> ChickenSales { get; set; }
+
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

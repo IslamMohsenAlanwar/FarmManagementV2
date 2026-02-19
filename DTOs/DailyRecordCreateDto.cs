@@ -4,6 +4,7 @@ namespace FarmManagement.API.DTOs
     {
         public int CycleId { get; set; }
         public int DeadCount { get; set; }
+public int WarehouseId { get; set; }
 
         public List<FeedConsumptionCreateDto> FeedConsumptions { get; set; } = new List<FeedConsumptionCreateDto>();
         public List<MedicineConsumptionCreateDto> MedicineConsumptions { get; set; } = new List<MedicineConsumptionCreateDto>();

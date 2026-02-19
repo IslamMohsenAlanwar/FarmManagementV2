@@ -22,5 +22,8 @@ namespace FarmManagement.API.Models
         public ICollection<DailyRecord> DailyRecords { get; set; } = new List<DailyRecord>();
 
         public ICollection<EggProductionRecord> EggProductionRecords { get; set; } = new List<EggProductionRecord>();
+
+public ICollection<ChickenSale> ChickenSales { get; set; } = new List<ChickenSale>();
+
     }
 }
