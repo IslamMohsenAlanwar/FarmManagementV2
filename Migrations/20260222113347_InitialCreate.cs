@@ -190,7 +190,8 @@ namespace FarmManagement.API.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     WorkerId = table.Column<int>(type: "int", nullable: false),
                     Amount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
-                    Date = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    Date = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CumulativeAmount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -212,7 +213,8 @@ namespace FarmManagement.API.Migrations
                     WorkerId = table.Column<int>(type: "int", nullable: false),
                     StartDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     EndDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Days = table.Column<int>(type: "int", nullable: false)
+                    Days = table.Column<int>(type: "int", nullable: false),
+                    CumulativeDays = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -409,6 +411,39 @@ namespace FarmManagement.API.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ChickenSales",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    CycleId = table.Column<int>(type: "int", nullable: false),
+                    TraderId = table.Column<int>(type: "int", nullable: false),
+                    Date = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Quantity = table.Column<int>(type: "int", nullable: false),
+                    UnitPrice = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    TotalPrice = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    PaidAmount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    RemainingAmount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    Notes = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ChickenSales", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ChickenSales_Cycles_CycleId",
+                        column: x => x.CycleId,
+                        principalTable: "Cycles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ChickenSales_Traders_TraderId",
+                        column: x => x.TraderId,
+                        principalTable: "Traders",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "DailyRecords",
                 columns: table => new
                 {
@@ -443,10 +478,9 @@ namespace FarmManagement.API.Migrations
                     BarnId = table.Column<int>(type: "int", nullable: false),
                     CycleId = table.Column<int>(type: "int", nullable: false),
                     Date = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CartonsCount = table.Column<int>(type: "int", nullable: false),
-                    TotalEggs = table.Column<int>(type: "int", nullable: false),
                     LiveBirdsCount = table.Column<int>(type: "int", nullable: false),
-                    ProductionRate = table.Column<decimal>(type: "decimal(5,2)", precision: 5, scale: 2, nullable: false),
+                    TotalEggs = table.Column<int>(type: "int", nullable: false),
+                    ProductionRate = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                     Notes = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
@@ -469,6 +503,51 @@ namespace FarmManagement.API.Migrations
                         name: "FK_EggProductionRecords_Farms_FarmId",
                         column: x => x.FarmId,
                         principalTable: "Farms",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "WarehouseTransactions",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    WarehouseId = table.Column<int>(type: "int", nullable: false),
+                    TraderId = table.Column<int>(type: "int", nullable: true),
+                    ItemId = table.Column<int>(type: "int", nullable: false),
+                    Quantity = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    PricePerTon = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    TotalPrice = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    Date = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    TransactionType = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    EggProductionRecordId = table.Column<int>(type: "int", nullable: true),
+                    EggSaleId = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_WarehouseTransactions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_WarehouseTransactions_EggSales_EggSaleId",
+                        column: x => x.EggSaleId,
+                        principalTable: "EggSales",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_WarehouseTransactions_Items_ItemId",
+                        column: x => x.ItemId,
+                        principalTable: "Items",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_WarehouseTransactions_Traders_TraderId",
+                        column: x => x.TraderId,
+                        principalTable: "Traders",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_WarehouseTransactions_Warehouses_WarehouseId",
+                        column: x => x.WarehouseId,
+                        principalTable: "Warehouses",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                 });
@@ -530,53 +609,25 @@ namespace FarmManagement.API.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "WarehouseTransactions",
+                name: "EggProductionDetail",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    WarehouseId = table.Column<int>(type: "int", nullable: false),
-                    TraderId = table.Column<int>(type: "int", nullable: true),
-                    ItemId = table.Column<int>(type: "int", nullable: false),
-                    Quantity = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
-                    PricePerTon = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
-                    TotalPrice = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
-                    Date = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    TransactionType = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    EggProductionRecordId = table.Column<int>(type: "int", nullable: true),
-                    EggSaleId = table.Column<int>(type: "int", nullable: true)
+                    EggProductionRecordId = table.Column<int>(type: "int", nullable: false),
+                    EggQuality = table.Column<int>(type: "int", nullable: false),
+                    CartonsCount = table.Column<int>(type: "int", nullable: false),
+                    TotalEggs = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_WarehouseTransactions", x => x.Id);
+                    table.PrimaryKey("PK_EggProductionDetail", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_WarehouseTransactions_EggProductionRecords_EggProductionRecordId",
+                        name: "FK_EggProductionDetail_EggProductionRecords_EggProductionRecordId",
                         column: x => x.EggProductionRecordId,
                         principalTable: "EggProductionRecords",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_WarehouseTransactions_EggSales_EggSaleId",
-                        column: x => x.EggSaleId,
-                        principalTable: "EggSales",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_WarehouseTransactions_Items_ItemId",
-                        column: x => x.ItemId,
-                        principalTable: "Items",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_WarehouseTransactions_Traders_TraderId",
-                        column: x => x.TraderId,
-                        principalTable: "Traders",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_WarehouseTransactions_Warehouses_WarehouseId",
-                        column: x => x.WarehouseId,
-                        principalTable: "Warehouses",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
@@ -616,6 +667,16 @@ namespace FarmManagement.API.Migrations
                 column: "FarmId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_ChickenSales_CycleId",
+                table: "ChickenSales",
+                column: "CycleId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ChickenSales_TraderId",
+                table: "ChickenSales",
+                column: "TraderId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Cycles_BarnId",
                 table: "Cycles",
                 column: "BarnId");
@@ -649,6 +710,11 @@ namespace FarmManagement.API.Migrations
                 name: "IX_DailyRecords_CycleId",
                 table: "DailyRecords",
                 column: "CycleId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EggProductionDetail_EggProductionRecordId",
+                table: "EggProductionDetail",
+                column: "EggProductionRecordId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_EggProductionRecords_BarnId",
@@ -712,11 +778,6 @@ namespace FarmManagement.API.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_WarehouseTransactions_EggProductionRecordId",
-                table: "WarehouseTransactions",
-                column: "EggProductionRecordId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_WarehouseTransactions_EggSaleId",
                 table: "WarehouseTransactions",
                 column: "EggSaleId");
@@ -747,10 +808,16 @@ namespace FarmManagement.API.Migrations
                 name: "AssetTransactions");
 
             migrationBuilder.DropTable(
+                name: "ChickenSales");
+
+            migrationBuilder.DropTable(
                 name: "DailyFeedConsumptions");
 
             migrationBuilder.DropTable(
                 name: "DailyMedicineConsumptions");
+
+            migrationBuilder.DropTable(
+                name: "EggProductionDetail");
 
             migrationBuilder.DropTable(
                 name: "FeedMixDetails");
@@ -771,13 +838,13 @@ namespace FarmManagement.API.Migrations
                 name: "DailyRecords");
 
             migrationBuilder.DropTable(
+                name: "EggProductionRecords");
+
+            migrationBuilder.DropTable(
                 name: "FeedMixes");
 
             migrationBuilder.DropTable(
                 name: "Workers");
-
-            migrationBuilder.DropTable(
-                name: "EggProductionRecords");
 
             migrationBuilder.DropTable(
                 name: "EggSales");
@@ -792,10 +859,10 @@ namespace FarmManagement.API.Migrations
                 name: "AssetWarehouses");
 
             migrationBuilder.DropTable(
-                name: "FeedTypes");
+                name: "Cycles");
 
             migrationBuilder.DropTable(
-                name: "Cycles");
+                name: "FeedTypes");
 
             migrationBuilder.DropTable(
                 name: "Traders");

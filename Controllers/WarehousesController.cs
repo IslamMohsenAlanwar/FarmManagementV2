@@ -188,6 +188,7 @@ namespace FarmManagement.API.Controllers
                 .Include(wi => wi.Item)
                 .Include(wi => wi.Warehouse)
                 .Where(wi => wi.WarehouseId == warehouseId)
+.OrderByDescending(wi => wi.Id) 
                 .Select(wi => new WarehouseItemDto
                 {
                     Id = wi.Id,

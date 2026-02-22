@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace FarmManagement.API.Models
 {
     public class EggProductionRecord
@@ -15,11 +18,9 @@ namespace FarmManagement.API.Models
 
         public DateTime Date { get; set; }
 
-        public int CartonsCount { get; set; }
+        public int LiveBirdsCount { get; set; }
 
         public int TotalEggs { get; set; }
-
-        public int LiveBirdsCount { get; set; }
 
         public decimal ProductionRate { get; set; }
 
@@ -27,7 +28,6 @@ namespace FarmManagement.API.Models
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        public ICollection<WarehouseTransaction> WarehouseTransactions { get; set; }
-            = new List<WarehouseTransaction>();
+        public ICollection<EggProductionDetail> Details { get; set; } = new List<EggProductionDetail>();
     }
 }

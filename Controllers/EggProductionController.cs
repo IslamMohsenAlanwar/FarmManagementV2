@@ -4,6 +4,8 @@ using FarmManagement.API.Data;
 using FarmManagement.API.Models;
 using FarmManagement.API.DTOs;
 using System.Globalization;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace FarmManagement.API.Controllers
 {
@@ -14,7 +16,7 @@ namespace FarmManagement.API.Controllers
         private readonly FarmDbContext _context;
         public EggProductionController(FarmDbContext context) => _context = context;
 
-        // ================= POST: EggProductionRecord =================
+        // ================= POST =================
         [HttpPost]
         public async Task<ActionResult<EggProductionRecordDto>> Create(CreateEggProductionDto dto)
         {
@@ -26,17 +28,13 @@ namespace FarmManagement.API.Controllers
 
             if (cycle == null) return BadRequest("Cycle not found.");
 
-            var lastDaily = cycle.DailyRecords
-                                .OrderByDescending(d => d.Date)
-                                .FirstOrDefault();
-
-            if (lastDaily == null) return BadRequest("No daily record for this cycle.");
+            var lastDaily = cycle.DailyRecords.OrderByDescending(d => d.Date).FirstOrDefault();
+            if (lastDaily == null) return BadRequest("No daily record found.");
 
             var liveBirds = lastDaily.RemainingChicks;
-            var totalEggs = dto.CartonsCount * EggsPerCarton;
-            var productionRate = liveBirds == 0 ? 0 : (decimal)totalEggs / liveBirds * 100;
 
             await using var transaction = await _context.Database.BeginTransactionAsync();
+
             try
             {
                 var record = new EggProductionRecord
@@ -45,34 +43,42 @@ namespace FarmManagement.API.Controllers
                     BarnId = dto.BarnId,
                     CycleId = dto.CycleId,
                     Date = dto.Date,
-                    CartonsCount = dto.CartonsCount,
-                    TotalEggs = totalEggs,
                     LiveBirdsCount = liveBirds,
-                    ProductionRate = productionRate,
                     Notes = dto.Notes
                 };
+
+                int totalEggs = 0;
+                int totalCartons = 0;
+
+                foreach (var d in dto.Details)
+                {
+                    var eggs = d.CartonsCount * EggsPerCarton;
+                    totalEggs += eggs;
+                    totalCartons += d.CartonsCount;
+
+                    record.Details.Add(new EggProductionDetail
+                    {
+                        EggQuality = d.EggQuality,
+                        CartonsCount = d.CartonsCount,
+                        TotalEggs = eggs
+                    });
+                }
+
+                record.TotalEggs = totalEggs;
+                record.ProductionRate = liveBirds == 0 ? 0 : (decimal)totalEggs / liveBirds * 100;
 
                 _context.EggProductionRecords.Add(record);
                 await _context.SaveChangesAsync();
 
-               
-                var eggItem = await _context.Items
-                    .Where(i => i.ItemType == ItemType.Egg)
-                    .OrderBy(i => i.Id)
-                    .FirstOrDefaultAsync();
-
-                var eggWarehouse = await _context.Warehouses
-                    .Where(w => w.FarmId == dto.FarmId)
-                    .OrderBy(w => w.Id)
-                    .FirstOrDefaultAsync();
+                // ===== تحديث المخزن =====
+                var eggItem = await _context.Items.FirstOrDefaultAsync(i => i.ItemType == ItemType.Egg);
+                var eggWarehouse = await _context.Warehouses.FirstOrDefaultAsync(w => w.FarmId == dto.FarmId);
 
                 if (eggItem == null || eggWarehouse == null)
                     return BadRequest("Egg item or warehouse not configured.");
 
                 var warehouseItem = await _context.WarehouseItems
-                    .Where(wi => wi.WarehouseId == eggWarehouse.Id && wi.ItemId == eggItem.Id)
-                    .OrderBy(wi => wi.Id)
-                    .FirstOrDefaultAsync();
+                    .FirstOrDefaultAsync(w => w.WarehouseId == eggWarehouse.Id && w.ItemId == eggItem.Id);
 
                 if (warehouseItem == null)
                 {
@@ -86,35 +92,36 @@ namespace FarmManagement.API.Controllers
                     _context.WarehouseItems.Add(warehouseItem);
                 }
 
-                warehouseItem.Quantity += dto.CartonsCount;
+                warehouseItem.Quantity += totalCartons;
 
-                var warehouseTransaction = new WarehouseTransaction
+                _context.WarehouseTransactions.Add(new WarehouseTransaction
                 {
                     WarehouseId = eggWarehouse.Id,
                     ItemId = eggItem.Id,
-                    Quantity = dto.CartonsCount,
+                    Quantity = totalCartons,
                     Date = dto.Date,
                     TransactionType = "EggProduction",
                     EggProductionRecordId = record.Id
-                };
-                _context.WarehouseTransactions.Add(warehouseTransaction);
+                });
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                return new EggProductionRecordDto
+                return Ok(new EggProductionRecordDto
                 {
                     Id = record.Id,
-                    FarmId = record.FarmId,
-                    BarnId = record.BarnId,
-                    CycleId = record.CycleId,
                     Date = record.Date,
-                    CartonsCount = record.CartonsCount,
                     TotalEggs = record.TotalEggs,
                     LiveBirdsCount = record.LiveBirdsCount,
                     ProductionRate = record.ProductionRate,
-                    Notes = record.Notes
-                };
+                    Notes = record.Notes,
+                    Details = record.Details.Select(d => new EggProductionDetailDto
+                    {
+                        EggQuality = d.EggQuality.ToString(),
+                        CartonsCount = d.CartonsCount,
+                        TotalEggs = d.TotalEggs
+                    }).ToList()
+                });
             }
             catch
             {
@@ -123,57 +130,30 @@ namespace FarmManagement.API.Controllers
             }
         }
 
-        // ================= GET: AllEggFromWarehouse =================
-        [HttpGet("warehouse")]
-        public async Task<ActionResult<IEnumerable<WarehouseItemDto>>> GetAllEggsInWarehouse()
-        {
-            var eggs = await _context.WarehouseItems
-                                     .Include(w => w.Item)
-                                     .Include(w => w.Warehouse)
-                                     .Where(w => w.Item.ItemType == ItemType.Egg)
-                                     .ToListAsync();
-
-            return eggs.Select(e => new WarehouseItemDto
-            {
-                WarehouseId = e.WarehouseId,
-                WarehouseName = e.Warehouse.Name,
-                ItemId = e.ItemId,
-                ItemName = e.Item.Name,
-                Quantity = e.Quantity
-            }).ToList();
-        }
-
-        // ================= GET: EggProduction By Barn=================
+        // ================= GET: By Farm =================
         [HttpGet("farm/{farmId}/eggs")]
         public async Task<ActionResult<IEnumerable<EggProductionByBarnDto>>> GetEggProductionByFarm(int farmId)
         {
-            var arabicCulture = new CultureInfo("ar-EG"); 
+            var arabicCulture = new CultureInfo("ar-EG");
 
-            // Egg Production Records
             var records = await _context.EggProductionRecords
-                .Include(r => r.Barn)    
+                .Include(r => r.Barn)
+                .Include(r => r.Details)
                 .Where(r => r.FarmId == farmId)
                 .OrderBy(r => r.Date)
                 .ToListAsync();
 
-            var eggItem = await _context.Items
-                .Where(i => i.ItemType == ItemType.Egg)
-                .OrderBy(i => i.Id)
-                .FirstOrDefaultAsync();
-
-            if (eggItem == null)
-                return BadRequest("Egg item not configured.");
-
-            var result = records.Select(r => new EggProductionByBarnDto
+            var result = records.SelectMany(r => r.Details.Select(d => new EggProductionByBarnDto
             {
                 BarnName = r.Barn.Name,
-                ItemName = eggItem.Name,
-                Quantity = r.TotalEggs,   
-                Day = arabicCulture.DateTimeFormat.GetDayName(r.Date.DayOfWeek), 
+                EggQuality = d.EggQuality.ToString(),
+                CartonsCount = d.CartonsCount,
+                TotalEggs = d.TotalEggs,
+                Day = arabicCulture.DateTimeFormat.GetDayName(r.Date.DayOfWeek),
                 Date = r.Date
-            }).ToList();
+            })).ToList();
 
-            return result;
+            return Ok(result);
         }
     }
 }

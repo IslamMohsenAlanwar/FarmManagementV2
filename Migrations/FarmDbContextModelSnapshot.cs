@@ -380,6 +380,33 @@ namespace FarmManagement.API.Migrations
                     b.ToTable("DailyRecords");
                 });
 
+            modelBuilder.Entity("FarmManagement.API.Models.EggProductionDetail", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CartonsCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EggProductionRecordId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EggQuality")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalEggs")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EggProductionRecordId");
+
+                    b.ToTable("EggProductionDetail");
+                });
+
             modelBuilder.Entity("FarmManagement.API.Models.EggProductionRecord", b =>
                 {
                     b.Property<int>("Id")
@@ -389,9 +416,6 @@ namespace FarmManagement.API.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int>("BarnId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("CartonsCount")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
@@ -766,8 +790,6 @@ namespace FarmManagement.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EggProductionRecordId");
-
                     b.HasIndex("EggSaleId");
 
                     b.HasIndex("ItemId");
@@ -969,6 +991,17 @@ namespace FarmManagement.API.Migrations
                     b.Navigation("Cycle");
                 });
 
+            modelBuilder.Entity("FarmManagement.API.Models.EggProductionDetail", b =>
+                {
+                    b.HasOne("FarmManagement.API.Models.EggProductionRecord", "EggProductionRecord")
+                        .WithMany("Details")
+                        .HasForeignKey("EggProductionRecordId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EggProductionRecord");
+                });
+
             modelBuilder.Entity("FarmManagement.API.Models.EggProductionRecord", b =>
                 {
                     b.HasOne("FarmManagement.API.Models.Barn", "Barn")
@@ -1088,10 +1121,6 @@ namespace FarmManagement.API.Migrations
 
             modelBuilder.Entity("FarmManagement.API.Models.WarehouseTransaction", b =>
                 {
-                    b.HasOne("FarmManagement.API.Models.EggProductionRecord", null)
-                        .WithMany("WarehouseTransactions")
-                        .HasForeignKey("EggProductionRecordId");
-
                     b.HasOne("FarmManagement.API.Models.EggSale", "EggSale")
                         .WithMany()
                         .HasForeignKey("EggSaleId");
@@ -1152,7 +1181,7 @@ namespace FarmManagement.API.Migrations
 
             modelBuilder.Entity("FarmManagement.API.Models.EggProductionRecord", b =>
                 {
-                    b.Navigation("WarehouseTransactions");
+                    b.Navigation("Details");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.Farm", b =>

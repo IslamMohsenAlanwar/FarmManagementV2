@@ -62,5 +62,11 @@ public class AdvanceRecordDto
 
 }
 
+public class WorkerRoleLookupDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
 
 }

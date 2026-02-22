@@ -113,6 +113,20 @@ namespace FarmManagement.API.Controllers
             await _context.SaveChangesAsync();
             return NoContent();
         }
+[HttpGet("roles")]
+public ActionResult<IEnumerable<WorkerRoleLookupDto>> GetWorkerRoles()
+{
+    var roles = Enum.GetValues(typeof(WorkerRole))
+        .Cast<WorkerRole>()
+        .Select(r => new WorkerRoleLookupDto
+        {
+            Id = (int)r,
+            Name = r.ToString()
+        })
+        .ToList();
+
+    return Ok(roles);
+}
 
         // ===================== VACATIONS =====================
 
