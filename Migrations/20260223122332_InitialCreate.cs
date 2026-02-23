@@ -25,6 +25,20 @@ namespace FarmManagement.API.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "EvaluationItems",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    MaxScore = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_EvaluationItems", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Farms",
                 columns: table => new
                 {
@@ -266,6 +280,8 @@ namespace FarmManagement.API.Migrations
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     FarmId = table.Column<int>(type: "int", nullable: false),
                     BarnId = table.Column<int>(type: "int", nullable: false),
+                    BarnManagerId = table.Column<int>(type: "int", nullable: true),
+                    BarnWorkerId = table.Column<int>(type: "int", nullable: true),
                     StartDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     EndDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     ChickCount = table.Column<int>(type: "int", nullable: false),
@@ -286,6 +302,18 @@ namespace FarmManagement.API.Migrations
                         name: "FK_Cycles_Farms_FarmId",
                         column: x => x.FarmId,
                         principalTable: "Farms",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Cycles_Workers_BarnManagerId",
+                        column: x => x.BarnManagerId,
+                        principalTable: "Workers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Cycles_Workers_BarnWorkerId",
+                        column: x => x.BarnWorkerId,
+                        principalTable: "Workers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                 });
@@ -378,7 +406,7 @@ namespace FarmManagement.API.Migrations
                         column: x => x.ItemId,
                         principalTable: "Items",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -439,6 +467,26 @@ namespace FarmManagement.API.Migrations
                         name: "FK_ChickenSales_Traders_TraderId",
                         column: x => x.TraderId,
                         principalTable: "Traders",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CycleEvaluations",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    CycleId = table.Column<int>(type: "int", nullable: false),
+                    Date = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CycleEvaluations", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CycleEvaluations_Cycles_CycleId",
+                        column: x => x.CycleId,
+                        principalTable: "Cycles",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -548,6 +596,33 @@ namespace FarmManagement.API.Migrations
                         name: "FK_WarehouseTransactions_Warehouses_WarehouseId",
                         column: x => x.WarehouseId,
                         principalTable: "Warehouses",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CycleEvaluationDetails",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    CycleEvaluationId = table.Column<int>(type: "int", nullable: false),
+                    EvaluationItemId = table.Column<int>(type: "int", nullable: false),
+                    Score = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CycleEvaluationDetails", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CycleEvaluationDetails_CycleEvaluations_CycleEvaluationId",
+                        column: x => x.CycleEvaluationId,
+                        principalTable: "CycleEvaluations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_CycleEvaluationDetails_EvaluationItems_EvaluationItemId",
+                        column: x => x.EvaluationItemId,
+                        principalTable: "EvaluationItems",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                 });
@@ -677,9 +752,34 @@ namespace FarmManagement.API.Migrations
                 column: "TraderId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_CycleEvaluationDetails_CycleEvaluationId",
+                table: "CycleEvaluationDetails",
+                column: "CycleEvaluationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CycleEvaluationDetails_EvaluationItemId",
+                table: "CycleEvaluationDetails",
+                column: "EvaluationItemId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CycleEvaluations_CycleId",
+                table: "CycleEvaluations",
+                column: "CycleId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Cycles_BarnId",
                 table: "Cycles",
                 column: "BarnId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Cycles_BarnManagerId",
+                table: "Cycles",
+                column: "BarnManagerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Cycles_BarnWorkerId",
+                table: "Cycles",
+                column: "BarnWorkerId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Cycles_FarmId",
@@ -811,6 +911,9 @@ namespace FarmManagement.API.Migrations
                 name: "ChickenSales");
 
             migrationBuilder.DropTable(
+                name: "CycleEvaluationDetails");
+
+            migrationBuilder.DropTable(
                 name: "DailyFeedConsumptions");
 
             migrationBuilder.DropTable(
@@ -835,6 +938,12 @@ namespace FarmManagement.API.Migrations
                 name: "AssetWarehouseItems");
 
             migrationBuilder.DropTable(
+                name: "CycleEvaluations");
+
+            migrationBuilder.DropTable(
+                name: "EvaluationItems");
+
+            migrationBuilder.DropTable(
                 name: "DailyRecords");
 
             migrationBuilder.DropTable(
@@ -842,9 +951,6 @@ namespace FarmManagement.API.Migrations
 
             migrationBuilder.DropTable(
                 name: "FeedMixes");
-
-            migrationBuilder.DropTable(
-                name: "Workers");
 
             migrationBuilder.DropTable(
                 name: "EggSales");
@@ -872,6 +978,9 @@ namespace FarmManagement.API.Migrations
 
             migrationBuilder.DropTable(
                 name: "Barns");
+
+            migrationBuilder.DropTable(
+                name: "Workers");
 
             migrationBuilder.DropTable(
                 name: "Farms");

@@ -248,6 +248,12 @@ namespace FarmManagement.API.Migrations
                     b.Property<int>("BarnId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("BarnManagerId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("BarnWorkerId")
+                        .HasColumnType("int");
+
                     b.Property<int>("ChickAge")
                         .HasColumnType("int");
 
@@ -277,9 +283,60 @@ namespace FarmManagement.API.Migrations
 
                     b.HasIndex("BarnId");
 
+                    b.HasIndex("BarnManagerId");
+
+                    b.HasIndex("BarnWorkerId");
+
                     b.HasIndex("FarmId");
 
                     b.ToTable("Cycles");
+                });
+
+            modelBuilder.Entity("FarmManagement.API.Models.CycleEvaluation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CycleId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CycleId");
+
+                    b.ToTable("CycleEvaluations");
+                });
+
+            modelBuilder.Entity("FarmManagement.API.Models.CycleEvaluationDetail", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CycleEvaluationId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EvaluationItemId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Score")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CycleEvaluationId");
+
+                    b.HasIndex("EvaluationItemId");
+
+                    b.ToTable("CycleEvaluationDetails");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.DailyFeedConsumption", b =>
@@ -501,6 +558,27 @@ namespace FarmManagement.API.Migrations
                     b.HasIndex("WarehouseId");
 
                     b.ToTable("EggSales");
+                });
+
+            modelBuilder.Entity("FarmManagement.API.Models.EvaluationItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("MaxScore")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("EvaluationItems");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.Farm", b =>
@@ -931,6 +1009,16 @@ namespace FarmManagement.API.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("FarmManagement.API.Models.Worker", "BarnManager")
+                        .WithMany()
+                        .HasForeignKey("BarnManagerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FarmManagement.API.Models.Worker", "BarnWorker")
+                        .WithMany()
+                        .HasForeignKey("BarnWorkerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("FarmManagement.API.Models.Farm", "Farm")
                         .WithMany("Cycles")
                         .HasForeignKey("FarmId")
@@ -939,7 +1027,41 @@ namespace FarmManagement.API.Migrations
 
                     b.Navigation("Barn");
 
+                    b.Navigation("BarnManager");
+
+                    b.Navigation("BarnWorker");
+
                     b.Navigation("Farm");
+                });
+
+            modelBuilder.Entity("FarmManagement.API.Models.CycleEvaluation", b =>
+                {
+                    b.HasOne("FarmManagement.API.Models.Cycle", "Cycle")
+                        .WithMany("Evaluations")
+                        .HasForeignKey("CycleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Cycle");
+                });
+
+            modelBuilder.Entity("FarmManagement.API.Models.CycleEvaluationDetail", b =>
+                {
+                    b.HasOne("FarmManagement.API.Models.CycleEvaluation", "CycleEvaluation")
+                        .WithMany("Details")
+                        .HasForeignKey("CycleEvaluationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FarmManagement.API.Models.EvaluationItem", "EvaluationItem")
+                        .WithMany()
+                        .HasForeignKey("EvaluationItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CycleEvaluation");
+
+                    b.Navigation("EvaluationItem");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.DailyFeedConsumption", b =>
@@ -1070,7 +1192,7 @@ namespace FarmManagement.API.Migrations
                     b.HasOne("FarmManagement.API.Models.Item", "Item")
                         .WithMany()
                         .HasForeignKey("ItemId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("FeedMix");
@@ -1170,6 +1292,13 @@ namespace FarmManagement.API.Migrations
                     b.Navigation("DailyRecords");
 
                     b.Navigation("EggProductionRecords");
+
+                    b.Navigation("Evaluations");
+                });
+
+            modelBuilder.Entity("FarmManagement.API.Models.CycleEvaluation", b =>
+                {
+                    b.Navigation("Details");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.DailyRecord", b =>

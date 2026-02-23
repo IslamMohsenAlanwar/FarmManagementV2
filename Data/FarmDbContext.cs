@@ -29,6 +29,7 @@ namespace FarmManagement.API.Data
         public DbSet<AssetWarehouseItem> AssetWarehouseItems { get; set; } = null!;
         public DbSet<AssetTransaction> AssetTransactions { get; set; } = null!;
 
+        // ======== Eggs ========
         public DbSet<EggProductionRecord> EggProductionRecords { get; set; } = null!;
         public DbSet<EggSale> EggSales { get; set; } = null!;
 
@@ -36,16 +37,19 @@ namespace FarmManagement.API.Data
         public DbSet<Worker> Workers { get; set; } = null!;
         public DbSet<Vacation> Vacations { get; set; } = null!;
         public DbSet<Advance> Advances { get; set; } = null!;
+        public DbSet<ChickenSale> ChickenSales { get; set; } = null!;
 
-public DbSet<ChickenSale> ChickenSales { get; set; }
-
+ // ======== Evaluation ========
+public DbSet<EvaluationItem> EvaluationItems { get; set; } = null!;
+public DbSet<CycleEvaluation> CycleEvaluations { get; set; } = null!;
+public DbSet<CycleEvaluationDetail> CycleEvaluationDetails { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
             // =====================================================
-            // GLOBAL DECIMAL PRECISION (يمنع أي تحذير مستقبلي)
+            // GLOBAL DECIMAL PRECISION
             // =====================================================
             foreach (var property in modelBuilder.Model
                 .GetEntityTypes()
@@ -71,12 +75,10 @@ public DbSet<ChickenSale> ChickenSales { get; set; }
             modelBuilder.Entity<Vacation>(v =>
             {
                 v.HasKey(x => x.Id);
-
                 v.HasOne(x => x.Worker)
                  .WithMany()
                  .HasForeignKey(x => x.WorkerId)
                  .OnDelete(DeleteBehavior.Cascade);
-
                 v.Property(x => x.Days);
                 v.Property(x => x.StartDate);
                 v.Property(x => x.EndDate);
@@ -87,25 +89,23 @@ public DbSet<ChickenSale> ChickenSales { get; set; }
             modelBuilder.Entity<Advance>(a =>
             {
                 a.HasKey(x => x.Id);
-
                 a.HasOne(x => x.Worker)
                  .WithMany()
                  .HasForeignKey(x => x.WorkerId)
                  .OnDelete(DeleteBehavior.Cascade);
-
                 a.Property(x => x.Amount);
                 a.Property(x => x.CumulativeAmount);
                 a.Property(x => x.Date);
             });
 
-            // ================= Existing Relationships =================
-
+            // ================= Barn =================
             modelBuilder.Entity<Barn>()
                 .HasOne(b => b.Farm)
                 .WithMany(f => f.Barns)
                 .HasForeignKey(b => b.FarmId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // ================= Cycle =================
             modelBuilder.Entity<Cycle>()
                 .HasOne(c => c.Farm)
                 .WithMany(f => f.Cycles)
@@ -118,6 +118,19 @@ public DbSet<ChickenSale> ChickenSales { get; set; }
                 .HasForeignKey(c => c.BarnId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            modelBuilder.Entity<Cycle>()
+                .HasOne(c => c.BarnManager)
+                .WithMany()
+                .HasForeignKey(c => c.BarnManagerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Cycle>()
+                .HasOne(c => c.BarnWorker)
+                .WithMany()
+                .HasForeignKey(c => c.BarnWorkerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ================= DailyRecord =================
             modelBuilder.Entity<DailyRecord>()
                 .HasOne(d => d.Cycle)
                 .WithMany(c => c.DailyRecords)
@@ -136,22 +149,11 @@ public DbSet<ChickenSale> ChickenSales { get; set; }
                 .HasForeignKey(m => m.DailyRecordId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // ================= Warehouse =================
             modelBuilder.Entity<Warehouse>()
                 .HasOne(w => w.Farm)
                 .WithOne(f => f.Warehouse)
                 .HasForeignKey<Warehouse>(w => w.FarmId);
-
-            modelBuilder.Entity<FeedMixDetail>()
-                .HasOne(fmd => fmd.FeedMix)
-                .WithMany(fm => fm.Details)
-                .HasForeignKey(fmd => fmd.FeedMixId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            modelBuilder.Entity<FeedMixDetail>()
-                .HasOne(fmd => fmd.Item)
-                .WithMany()
-                .HasForeignKey(fmd => fmd.ItemId)
-                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<WarehouseItem>()
                 .HasOne(wi => wi.Warehouse)
@@ -183,24 +185,57 @@ public DbSet<ChickenSale> ChickenSales { get; set; }
                 .HasForeignKey(wt => wt.ItemId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // ================= EggProductionRecord =================
             modelBuilder.Entity<EggProductionRecord>()
                 .HasOne(r => r.Farm)
-                .WithMany()
+                .WithMany() // لا حاجة لجمع EggProductionRecords في Farm
                 .HasForeignKey(r => r.FarmId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Restrict); // منع Multiple Cascade Paths
 
             modelBuilder.Entity<EggProductionRecord>()
                 .HasOne(r => r.Barn)
                 .WithMany(b => b.EggProductionRecords)
                 .HasForeignKey(r => r.BarnId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Restrict); // منع Multiple Cascade Paths
 
             modelBuilder.Entity<EggProductionRecord>()
                 .HasOne(r => r.Cycle)
                 .WithMany(c => c.EggProductionRecords)
                 .HasForeignKey(r => r.CycleId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Cascade); // Cascade فقط من Cycle
 
+
+// ================= EvaluationItem =================
+modelBuilder.Entity<EvaluationItem>(e =>
+{
+    e.HasKey(x => x.Id);
+    e.Property(x => x.Name).IsRequired().HasMaxLength(100);
+});
+
+modelBuilder.Entity<CycleEvaluation>(e =>
+{
+    e.HasKey(x => x.Id);
+    e.HasOne(x => x.Cycle)
+     .WithMany(c => c.Evaluations)
+     .HasForeignKey(x => x.CycleId)
+     .OnDelete(DeleteBehavior.Cascade);
+});
+
+modelBuilder.Entity<CycleEvaluationDetail>(e =>
+{
+    e.HasKey(x => x.Id);
+    e.HasOne(d => d.CycleEvaluation)
+     .WithMany(c => c.Details)
+     .HasForeignKey(d => d.CycleEvaluationId)
+     .OnDelete(DeleteBehavior.Cascade);
+
+    e.HasOne(d => d.EvaluationItem)
+     .WithMany()
+     .HasForeignKey(d => d.EvaluationItemId)
+     .OnDelete(DeleteBehavior.Restrict);
+});
+
+            // ================= Assets =================
             modelBuilder.Entity<AssetWarehouse>()
                 .HasOne(w => w.Farm)
                 .WithOne(f => f.AssetWarehouse)

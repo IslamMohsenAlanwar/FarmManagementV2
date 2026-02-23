@@ -128,6 +128,35 @@ public ActionResult<IEnumerable<WorkerRoleLookupDto>> GetWorkerRoles()
     return Ok(roles);
 }
 
+[HttpGet("barn-managers")]
+public async Task<ActionResult<IEnumerable<LookupDto>>> GetBarnManagers()
+{
+    var managers = await _context.Workers
+        .Where(w => w.Role == WorkerRole.BarnManager)
+        .Select(w => new LookupDto
+        {
+            Id = w.Id,
+            Name = w.Name
+        })
+        .ToListAsync();
+
+    return Ok(managers);
+}
+
+[HttpGet("barn-workers")]
+public async Task<ActionResult<IEnumerable<LookupDto>>> GetBarnWorkers()
+{
+    var workers = await _context.Workers
+        .Where(w => w.Role == WorkerRole.BarnWorker)
+        .Select(w => new LookupDto
+        {
+            Id = w.Id,
+            Name = w.Name
+        })
+        .ToListAsync();
+
+    return Ok(workers);
+}
         // ===================== VACATIONS =====================
 
         [HttpPost("vacation")]
