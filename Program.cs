@@ -2,13 +2,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.HttpOverrides;
 using FarmManagement.API.Data;
 using FarmManagement.API;
-
+using FarmManagement.API.Helpers;   
 var builder = WebApplication.CreateBuilder(args);
 
 // ======== Add services to the container ========
-// SQL Server محلي
+
 builder.Services.AddDbContext<FarmDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddScoped<EvaluationService>();
 
 // ======== Controllers & JSON ========
 builder.Services.AddControllers()
@@ -35,7 +37,7 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// ======== Forwarded Headers (لو احتجت مستقبلًا خلف Proxy) ========
+// ======== Forwarded Headers ( Proxy) ========
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor |
@@ -55,7 +57,7 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
-// ⚠️ HTTPS Redirection غير مفعل للمحلي
+//  HTTPS Redirection 
 // app.UseHttpsRedirection();
 
 app.UseAuthorization();
@@ -68,6 +70,6 @@ using (var scope = app.Services.CreateScope())
     await SeedData.Initialize(context);
 }
 
-// ======== Run Application محلي على localhost ========
-app.Urls.Add("http://localhost:5112"); // ممكن تغير البورت لو تحب
+// ======== Run Application  localhost ========
+app.Urls.Add("http://localhost:5112"); 
 app.Run();
