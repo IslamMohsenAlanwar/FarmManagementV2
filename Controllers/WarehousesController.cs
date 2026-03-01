@@ -87,95 +87,130 @@ namespace FarmManagement.API.Controllers
         // Warehouse Transactions (Purchases Only)
      
 
-        [HttpPost("transaction")]
-        public async Task<ActionResult> AddWarehouseTransaction(WarehouseTransactionCreateDto dto)
+       [HttpPost("transaction")]
+public async Task<ActionResult> AddWarehouseTransaction(WarehouseTransactionCreateDto dto)
+{
+    // التأكد من المورد
+    var trader = await _context.Traders.FindAsync(dto.TraderId);
+    if (trader == null || trader.Type != TraderType.مورد)
+        return BadRequest("يجب اختيار تاجر من نوع (مورد Supplier) لتنفيذ هذه العملية.");
+
+    var date = dto.Date ?? DateTime.Now;
+
+    await using var transaction = await _context.Database.BeginTransactionAsync();
+    try
+    {
+        decimal totalTransactionAmount = 0; // مجموع المصروف
+
+        foreach (var itemDto in dto.Items)
         {
-            var trader = await _context.Traders.FindAsync(dto.TraderId);
-            if (trader == null || trader.Type != TraderType.مورد)
-                return BadRequest("يجب اختيار تاجر من نوع (مورد Supplier) لتنفيذ هذه العملية.");
+            var totalPrice = itemDto.Quantity * itemDto.PricePerTon;
+            totalTransactionAmount += totalPrice;
 
-            var date = dto.Date ?? DateTime.Now;
-
-            await using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            // تسجيل الحركة في المخزن
+            var warehouseTrans = new WarehouseTransaction
             {
-                foreach (var itemDto in dto.Items)
+                WarehouseId = dto.WarehouseId,
+                TraderId = dto.TraderId,
+                ItemId = itemDto.ItemId,
+                Quantity = itemDto.Quantity,
+                PricePerTon = itemDto.PricePerTon,
+                TotalPrice = totalPrice,
+                Date = date,
+                TransactionType = "Purchase"
+            };
+            _context.WarehouseTransactions.Add(warehouseTrans);
+
+            // تحديث المخزون
+            var warehouseItem = await _context.WarehouseItems
+                .FirstOrDefaultAsync(wi => wi.WarehouseId == dto.WarehouseId && wi.ItemId == itemDto.ItemId);
+
+            if (warehouseItem == null)
+            {
+                _context.WarehouseItems.Add(new WarehouseItem
                 {
-                    
-                    var warehouseTrans = new WarehouseTransaction
-                    {
-                        WarehouseId = dto.WarehouseId,
-                        TraderId = dto.TraderId,
-                        ItemId = itemDto.ItemId,
-                        Quantity = itemDto.Quantity,
-                        PricePerTon = itemDto.PricePerTon,
-                        TotalPrice = itemDto.Quantity * itemDto.PricePerTon,
-                        Date = date,
-                        TransactionType = "Purchase" 
-                    };
-                    _context.WarehouseTransactions.Add(warehouseTrans);
-
-                    var warehouseItem = await _context.WarehouseItems
-                        .FirstOrDefaultAsync(wi => wi.WarehouseId == dto.WarehouseId && wi.ItemId == itemDto.ItemId);
-
-                    if (warehouseItem == null)
-                    {
-                        _context.WarehouseItems.Add(new WarehouseItem
-                        {
-                            WarehouseId = dto.WarehouseId,
-                            ItemId = itemDto.ItemId,
-                            Quantity = itemDto.Quantity,
-                            PricePerUnit = itemDto.PricePerTon,
-                            Withdrawn = 0
-                        });
-                    }
-                    else
-                    {
-                        warehouseItem.Quantity += itemDto.Quantity;
-                        warehouseItem.PricePerUnit = itemDto.PricePerTon; 
-                    }
-                }
-
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-                return Ok(new { message = "تم تسجيل التوريد وتحديث المخزن بنجاح" });
+                    WarehouseId = dto.WarehouseId,
+                    ItemId = itemDto.ItemId,
+                    Quantity = itemDto.Quantity,
+                    PricePerUnit = itemDto.PricePerTon,
+                    Withdrawn = 0
+                });
             }
-            catch {
-                await transaction.RollbackAsync();
-                return BadRequest("حدث خطأ أثناء حفظ البيانات");
+            else
+            {
+                warehouseItem.Quantity += itemDto.Quantity;
+                warehouseItem.PricePerUnit = itemDto.PricePerTon;
             }
         }
 
-        [HttpDelete("transaction/{id}")]
-        public async Task<ActionResult> DeleteTransaction(int id)
+        // ======= تسجيل المصروف في الخزنة =======
+        var cashBoxEntry = new CashBoxTransaction
         {
-            var trans = await _context.WarehouseTransactions.FindAsync(id);
-            if (trans == null) return NotFound("الحركة غير موجودة");
+            Date = date,
+            Type = "منصرف",
+            Category = "شراء خامات/أدوية",
+            Amount = totalTransactionAmount,
+            Notes = $"شراء خامات/أدوية من المورد {trader.Name}",
+            TraderId = trader.Id,
+            WarehouseId = dto.WarehouseId
+        };
+        _context.CashBoxTransactions.Add(cashBoxEntry);
+        // =======================================
 
-            await using var transaction = await _context.Database.BeginTransactionAsync();
-            try
-            {
-                var warehouseItem = await _context.WarehouseItems
-                    .FirstOrDefaultAsync(wi => wi.WarehouseId == trans.WarehouseId && wi.ItemId == trans.ItemId);
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return Ok(new { message = "تم تسجيل التوريد وتحديث المخزن والخزنة بنجاح" });
+    }
+    catch
+    {
+        await transaction.RollbackAsync();
+        return BadRequest("حدث خطأ أثناء حفظ البيانات");
+    }
+}
 
-                if (warehouseItem != null)
-                {
-                    if (warehouseItem.Quantity < trans.Quantity)
-                        return BadRequest("لا يمكن حذف الحركة لأن الكمية المستخدمة أكبر من الرصيد المتبقي.");
+[HttpDelete("transaction/{id}")]
+public async Task<ActionResult> DeleteTransaction(int id)
+{
+    var trans = await _context.WarehouseTransactions.FindAsync(id);
+    if (trans == null) return NotFound("الحركة غير موجودة");
 
-                    warehouseItem.Quantity -= trans.Quantity;
-                }
+    await using var transaction = await _context.Database.BeginTransactionAsync();
+    try
+    {
+        var warehouseItem = await _context.WarehouseItems
+            .FirstOrDefaultAsync(wi => wi.WarehouseId == trans.WarehouseId && wi.ItemId == trans.ItemId);
 
-                _context.WarehouseTransactions.Remove(trans);
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-                return Ok(new { message = "تم حذف الحركة وتعديل الرصيد" });
-            }
-            catch {
-                await transaction.RollbackAsync();
-                return BadRequest("فشل حذف الحركة");
-            }
+        if (warehouseItem != null)
+        {
+            if (warehouseItem.Quantity < trans.Quantity)
+                return BadRequest("لا يمكن حذف الحركة لأن الكمية المستخدمة أكبر من الرصيد المتبقي.");
+
+            warehouseItem.Quantity -= trans.Quantity;
         }
+
+        // حذف الحركة من المخزن
+        _context.WarehouseTransactions.Remove(trans);
+
+        // حذف المصروف من الخزنة إذا موجود
+        var cashBoxEntry = await _context.CashBoxTransactions
+            .FirstOrDefaultAsync(c => c.Category == "Purchase" 
+                                   && c.TraderId == trans.TraderId
+                                   && c.WarehouseId == trans.WarehouseId
+                                   && c.Amount == trans.TotalPrice
+                                   && c.Date == trans.Date);
+        if (cashBoxEntry != null)
+            _context.CashBoxTransactions.Remove(cashBoxEntry);
+
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return Ok(new { message = "تم حذف الحركة وتعديل المخزن والخزنة" });
+    }
+    catch
+    {
+        await transaction.RollbackAsync();
+        return BadRequest("فشل حذف الحركة");
+    }
+}
 
     
         // Lookups & Reports

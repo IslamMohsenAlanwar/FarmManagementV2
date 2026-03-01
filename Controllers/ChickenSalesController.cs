@@ -63,6 +63,7 @@ namespace FarmManagement.API.Controllers
 
             try
             {
+                // إضافة البيع
                 var sale = new ChickenSale
                 {
                     CycleId = dto.CycleId,
@@ -80,6 +81,19 @@ namespace FarmManagement.API.Controllers
 
                 // تحديث رصيد التاجر
                 trader.Balance += remaining;
+
+                // ======= تسجيل العملية في الخزنة =======
+                var cashBoxEntry = new CashBoxTransaction
+                {
+                    Date = dto.Date,
+                    Type = "Income",
+                    Category = "ChickenSale",
+                    Amount = dto.PaidAmount, // الفلوس اللي اتدفعت فعلياً
+                    Notes = $"بيع فراخ لتاجر {trader.Name}",
+                    TraderId = trader.Id
+                };
+                _context.CashBoxTransactions.Add(cashBoxEntry);
+                // =======================================
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();

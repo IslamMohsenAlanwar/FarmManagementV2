@@ -18,6 +18,8 @@ namespace FarmManagement.API.DTOs
         public int ChickCount { get; set; }
         public int ChickAge { get; set; }
 
+public double FinalScore { get; set; } 
+
 public int? BarnManagerId { get; set; }
 public string? BarnManagerName { get; set; }
 

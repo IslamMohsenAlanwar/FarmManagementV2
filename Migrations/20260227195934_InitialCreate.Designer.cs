@@ -4,6 +4,7 @@ using FarmManagement.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FarmManagement.API.Migrations
 {
     [DbContext(typeof(FarmDbContext))]
-    partial class FarmDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260227195934_InitialCreate")]
+    partial class InitialCreate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -748,45 +751,6 @@ namespace FarmManagement.API.Migrations
                     b.ToTable("Items");
                 });
 
-            modelBuilder.Entity("FarmManagement.API.Models.Salary", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<decimal>("BaseSalary")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime>("Date")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("Month")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("NetSalary")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("TotalAdvances")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("WorkerId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Year")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("WorkerId");
-
-                    b.ToTable("Salaries");
-                });
-
             modelBuilder.Entity("FarmManagement.API.Models.Trader", b =>
                 {
                     b.Property<int>("Id")
@@ -1296,17 +1260,6 @@ namespace FarmManagement.API.Migrations
                     b.Navigation("FeedMix");
 
                     b.Navigation("Item");
-                });
-
-            modelBuilder.Entity("FarmManagement.API.Models.Salary", b =>
-                {
-                    b.HasOne("FarmManagement.API.Models.Worker", "Worker")
-                        .WithMany()
-                        .HasForeignKey("WorkerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Worker");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.Vacation", b =>

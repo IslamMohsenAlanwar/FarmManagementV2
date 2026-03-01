@@ -214,3 +214,4 @@ D:\local\FarmManagement.API\obj\Debug\net9.0\staticwebassets.build.endpoints.jso
 D:\local\FarmManagement.API\obj\Debug\net9.0\FarmMana.33A628A1.Up2Date
 D:\local\FarmManagement.API\obj\Debug\net9.0\FarmManagement.API.genruntimeconfig.cache
 D:\local\FarmManagement.API\obj\Debug\net9.0\ref\FarmManagement.API.dll
+D:\local\FarmManagement.API\obj\Debug\net9.0\swae.build.ex.cache

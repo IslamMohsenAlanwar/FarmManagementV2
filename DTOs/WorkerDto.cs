@@ -8,6 +8,8 @@ namespace FarmManagement.API.DTOs
         public required string Role { get; set; } 
           public decimal Salary { get; set; }
           public int VacationDays { get; set; }
+    public double FinalScore { get; set; }
+
     }
 
     public class CreateWorkerDto
@@ -67,6 +69,8 @@ public class WorkerRoleLookupDto
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
 }
+
+
 
 
 }

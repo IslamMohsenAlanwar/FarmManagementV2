@@ -17,7 +17,6 @@ namespace FarmManagement.API.Controllers
         [HttpPost]
         public async Task<ActionResult> CreateSale(EggSaleCreateDto dto)
         {
-            
             var trader = await _context.Traders
                 .OrderBy(t => t.Id)
                 .FirstOrDefaultAsync(t => t.Id == dto.TraderId);
@@ -25,7 +24,6 @@ namespace FarmManagement.API.Controllers
             if (trader == null || trader.Type != TraderType.مشتري)
                 return BadRequest("يجب اختيار تاجر مسجل كـ (مشتري بيض).");
 
-       
             var eggItem = await _context.Items
                 .Where(i => i.ItemType == ItemType.Egg)
                 .OrderBy(i => i.Id)
@@ -34,7 +32,6 @@ namespace FarmManagement.API.Controllers
             if (eggItem == null)
                 return BadRequest("صنف (البيض) غير معرف في قائمة الأصناف العامة.");
 
-            
             var warehouseItem = await _context.WarehouseItems
                 .Where(wi => wi.WarehouseId == dto.WarehouseId && wi.ItemId == eggItem.Id)
                 .OrderBy(wi => wi.Id)
@@ -51,6 +48,7 @@ namespace FarmManagement.API.Controllers
             await using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
+                // إضافة البيع
                 var sale = new EggSale
                 {
                     WarehouseId = dto.WarehouseId,
@@ -65,11 +63,14 @@ namespace FarmManagement.API.Controllers
                 };
                 _context.EggSales.Add(sale);
 
+                // تحديث المخزن
                 warehouseItem.Quantity -= quantityDecimal;
                 warehouseItem.Withdrawn += quantityDecimal;
 
+                // تحديث رصيد التاجر
                 trader.Balance += remaining;
 
+                // تسجيل الحركة في مخزن المواد (WarehouseTransaction)
                 _context.WarehouseTransactions.Add(new WarehouseTransaction
                 {
                     WarehouseId = dto.WarehouseId,
@@ -82,6 +83,20 @@ namespace FarmManagement.API.Controllers
                     Date = dto.Date,
                     EggSale = sale
                 });
+
+                // ======= تسجيل العملية في الخزنة =======
+                var cashBoxEntry = new CashBoxTransaction
+                {
+                    Date = dto.Date,
+                    Type = "إيراد",
+                    Category = "بيع بيض",
+                    Amount = dto.PaidAmount, // الفلوس اللي اتدفعت
+                    Notes = $"بيع بيض لتاجر {trader.Name}",
+                    TraderId = trader.Id,
+                    WarehouseId = dto.WarehouseId
+                };
+                _context.CashBoxTransactions.Add(cashBoxEntry);
+                // =======================================
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();

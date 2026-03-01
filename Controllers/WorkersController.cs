@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using FarmManagement.API.Helpers;
 using Microsoft.EntityFrameworkCore;
 using FarmManagement.API.Data;
 using FarmManagement.API.Models;
@@ -11,10 +12,13 @@ namespace FarmManagement.API.Controllers
     public class WorkersController : ControllerBase
     {
         private readonly FarmDbContext _context;
+        private readonly EvaluationService _evaluationService;
 
-        public WorkersController(FarmDbContext context)
+        // ===== Constructor مع DI لـ EvaluationService =====
+        public WorkersController(FarmDbContext context, EvaluationService evaluationService)
         {
             _context = context;
+            _evaluationService = evaluationService;
         }
 
         private static WorkerRole RoleFromNumber(int number) => number switch
@@ -55,25 +59,50 @@ namespace FarmManagement.API.Controllers
                 Phone = worker.Phone,
                 Role = RoleToString(worker.Role),
                 Salary = worker.Salary,
-                VacationDays = worker.VacationDays
+                VacationDays = worker.VacationDays,
+                FinalScore = 0
             };
 
             return CreatedAtAction(nameof(GetWorkerById), new { id = worker.Id }, result);
         }
 
+        // ===== GET ALL WITH FinalScore =====
         [HttpGet]
         public async Task<ActionResult<IEnumerable<WorkerDto>>> GetWorkers()
         {
-            var workers = await _context.Workers.ToListAsync();
+            var workers = await _context.Workers
+                .OrderByDescending(w => w.Id)
+                .ToListAsync();
 
-            var result = workers.Select(w => new WorkerDto
+            var result = workers.Select(w =>
             {
-                Id = w.Id,
-                Name = w.Name,
-                Phone = w.Phone,
-                Role = RoleToString(w.Role),
-                Salary = w.Salary,
-                VacationDays = w.VacationDays
+                double finalScore = 0;
+
+                // جلب آخر دورة مرتبطة بالـ Worker
+                var lastCycle = _context.Cycles
+                    .Include(c => c.Evaluations)
+                    .ThenInclude(e => e.Details)
+                    .Where(c => (w.Role == WorkerRole.BarnWorker && c.BarnWorkerId == w.Id) ||
+                                (w.Role == WorkerRole.BarnManager && c.BarnManagerId == w.Id))
+                    .OrderByDescending(c => c.Id)
+                    .FirstOrDefault();
+
+                if (lastCycle != null)
+                {
+                    // حساب FinalScore باستخدام EvaluationService
+                    finalScore = _evaluationService.CalculateFinalScore(lastCycle);
+                }
+
+                return new WorkerDto
+                {
+                    Id = w.Id,
+                    Name = w.Name,
+                    Phone = w.Phone,
+                    Role = RoleToString(w.Role),
+                    Salary = w.Salary,
+                    VacationDays = w.VacationDays,
+                    FinalScore = finalScore
+                };
             });
 
             return Ok(result);
@@ -85,6 +114,19 @@ namespace FarmManagement.API.Controllers
             var worker = await _context.Workers.FindAsync(id);
             if (worker == null) return NotFound();
 
+            // جلب آخر دورة مرتبطة
+            double finalScore = 0;
+            var lastCycle = _context.Cycles
+                .Include(c => c.Evaluations)
+                .ThenInclude(e => e.Details)
+                .Where(c => (worker.Role == WorkerRole.BarnWorker && c.BarnWorkerId == worker.Id) ||
+                            (worker.Role == WorkerRole.BarnManager && c.BarnManagerId == worker.Id))
+                .OrderByDescending(c => c.Id)
+                .FirstOrDefault();
+
+            if (lastCycle != null)
+                finalScore = _evaluationService.CalculateFinalScore(lastCycle);
+
             var result = new WorkerDto
             {
                 Id = worker.Id,
@@ -92,7 +134,8 @@ namespace FarmManagement.API.Controllers
                 Phone = worker.Phone,
                 Role = RoleToString(worker.Role),
                 Salary = worker.Salary,
-                VacationDays = worker.VacationDays
+                VacationDays = worker.VacationDays,
+                FinalScore = finalScore
             };
 
             return Ok(result);
@@ -113,52 +156,53 @@ namespace FarmManagement.API.Controllers
             await _context.SaveChangesAsync();
             return NoContent();
         }
-[HttpGet("roles")]
-public ActionResult<IEnumerable<WorkerRoleLookupDto>> GetWorkerRoles()
-{
-    var roles = Enum.GetValues(typeof(WorkerRole))
-        .Cast<WorkerRole>()
-        .Select(r => new WorkerRoleLookupDto
+
+        [HttpGet("roles")]
+        public ActionResult<IEnumerable<WorkerRoleLookupDto>> GetWorkerRoles()
         {
-            Id = (int)r,
-            Name = r.ToString()
-        })
-        .ToList();
+            var roles = Enum.GetValues(typeof(WorkerRole))
+                .Cast<WorkerRole>()
+                .Select(r => new WorkerRoleLookupDto
+                {
+                    Id = (int)r,
+                    Name = r.ToString()
+                })
+                .ToList();
 
-    return Ok(roles);
-}
+            return Ok(roles);
+        }
 
-[HttpGet("barn-managers")]
-public async Task<ActionResult<IEnumerable<LookupDto>>> GetBarnManagers()
-{
-    var managers = await _context.Workers
-        .Where(w => w.Role == WorkerRole.BarnManager)
-        .Select(w => new LookupDto
+        [HttpGet("barn-managers")]
+        public async Task<ActionResult<IEnumerable<LookupDto>>> GetBarnManagers()
         {
-            Id = w.Id,
-            Name = w.Name
-        })
-        .ToListAsync();
+            var managers = await _context.Workers
+                .Where(w => w.Role == WorkerRole.BarnManager)
+                .Select(w => new LookupDto
+                {
+                    Id = w.Id,
+                    Name = w.Name
+                })
+                .ToListAsync();
 
-    return Ok(managers);
-}
+            return Ok(managers);
+        }
 
-[HttpGet("barn-workers")]
-public async Task<ActionResult<IEnumerable<LookupDto>>> GetBarnWorkers()
-{
-    var workers = await _context.Workers
-        .Where(w => w.Role == WorkerRole.BarnWorker)
-        .Select(w => new LookupDto
+        [HttpGet("barn-workers")]
+        public async Task<ActionResult<IEnumerable<LookupDto>>> GetBarnWorkers()
         {
-            Id = w.Id,
-            Name = w.Name
-        })
-        .ToListAsync();
+            var workers = await _context.Workers
+                .Where(w => w.Role == WorkerRole.BarnWorker)
+                .Select(w => new LookupDto
+                {
+                    Id = w.Id,
+                    Name = w.Name
+                })
+                .ToListAsync();
 
-    return Ok(workers);
-}
+            return Ok(workers);
+        }
+
         // ===================== VACATIONS =====================
-
         [HttpPost("vacation")]
         public async Task<IActionResult> AddVacation([FromBody] CreateVacationDto dto)
         {
@@ -237,32 +281,61 @@ public async Task<ActionResult<IEnumerable<LookupDto>>> GetBarnWorkers()
         }
 
         // ===================== ADVANCES =====================
+       [HttpPost("advance")]
+public async Task<IActionResult> AddAdvance([FromBody] CreateAdvanceDto dto)
+{
+    await using var transaction = await _context.Database.BeginTransactionAsync();
 
-        [HttpPost("advance")]
-        public async Task<IActionResult> AddAdvance([FromBody] CreateAdvanceDto dto)
+    try
+    {
+        var worker = await _context.Workers.FindAsync(dto.WorkerId);
+        if (worker == null) 
+            return NotFound("Worker not found");
+
+        var lastCumulative = await _context.Advances
+            .Where(a => a.WorkerId == dto.WorkerId)
+            .OrderByDescending(a => a.Id)
+            .Select(a => a.CumulativeAmount)
+            .FirstOrDefaultAsync();
+
+        var advance = new Advance
         {
-            var worker = await _context.Workers.FindAsync(dto.WorkerId);
-            if (worker == null) return NotFound("Worker not found");
+            WorkerId = worker.Id,
+            Amount = dto.Amount,
+            Date = dto.Date,
+            CumulativeAmount = lastCumulative + dto.Amount
+        };
 
-            var lastCumulative = await _context.Advances
-                .Where(a => a.WorkerId == dto.WorkerId)
-                .OrderByDescending(a => a.Id)
-                .Select(a => a.CumulativeAmount)
-                .FirstOrDefaultAsync();
+        _context.Advances.Add(advance);
 
-            var advance = new Advance
-            {
-                WorkerId = worker.Id,
-                Amount = dto.Amount,
-                Date = dto.Date,
-                CumulativeAmount = lastCumulative + dto.Amount
-            };
+        // ✅ تسجيلها كمصروف في الخزنة
+        var cashBoxEntry = new CashBoxTransaction
+        {
+            Date = dto.Date,
+            Type = "منصرف",
+            Category = "سلفة",
+            Amount = dto.Amount,
+            Notes = $"سلفة للعامل {worker.Name}",
+            WorkerId = worker.Id
+        };
 
-            _context.Advances.Add(advance);
-            await _context.SaveChangesAsync();
+        _context.CashBoxTransactions.Add(cashBoxEntry);
 
-            return Ok(advance);
-        }
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        return Ok(new
+        {
+            message = "تم تسجيل السلفة وخصمها من الخزنة",
+            advance
+        });
+    }
+    catch
+    {
+        await transaction.RollbackAsync();
+        return BadRequest("حدث خطأ أثناء تسجيل السلفة");
+    }
+}
 
         [HttpGet("advances")]
         public async Task<ActionResult<IEnumerable<AdvanceRecordDto>>> GetAllAdvances()
@@ -304,5 +377,97 @@ public async Task<ActionResult<IEnumerable<LookupDto>>> GetBarnWorkers()
 
             return Ok(advances);
         }
+
+[HttpPost("salary")]
+public async Task<IActionResult> PayMonthlySalary([FromBody] CreateSalaryDto dto)
+{
+    await using var transaction = await _context.Database.BeginTransactionAsync();
+
+    try
+    {
+        var worker = await _context.Workers.FindAsync(dto.WorkerId);
+        if (worker == null)
+            return NotFound("Worker not found");
+
+        // منع تكرار صرف نفس الشهر
+        var alreadyPaid = await _context.Salaries.AnyAsync(s =>
+            s.WorkerId == dto.WorkerId &&
+            s.Month == dto.Month &&
+            s.Year == dto.Year);
+
+        if (alreadyPaid)
+            return BadRequest("تم صرف راتب هذا الشهر بالفعل");
+
+        // إجمالي السلف الحالية
+        var totalAdvances = await _context.Advances
+            .Where(a => a.WorkerId == dto.WorkerId)
+            .OrderByDescending(a => a.Id)
+            .Select(a => a.CumulativeAmount)
+            .FirstOrDefaultAsync();
+
+        var baseSalary = worker.Salary;
+        var netSalary = baseSalary - totalAdvances;
+        if (netSalary < 0) netSalary = 0;
+
+        var salary = new Salary
+        {
+            WorkerId = worker.Id,
+            Month = dto.Month,
+            Year = dto.Year,
+            BaseSalary = baseSalary,
+            TotalAdvances = totalAdvances,
+            NetSalary = netSalary,
+            Date = DateTime.Now
+        };
+
+        _context.Salaries.Add(salary);
+
+        // تسجيل مصروف في الخزنة
+        var cashBoxEntry = new CashBoxTransaction
+        {
+            Date = DateTime.Now,
+            Type = "منصرف",
+            Category = "راتب",
+            Amount = netSalary,
+            Notes = $"راتب شهر {dto.Month}/{dto.Year} للعامل {worker.Name}",
+            WorkerId = worker.Id
+        };
+
+        _context.CashBoxTransactions.Add(cashBoxEntry);
+
+        // تصفير السلف بعد الخصم
+        if (totalAdvances > 0)
+        {
+            _context.Advances.Add(new Advance
+            {
+                WorkerId = worker.Id,
+                Amount = 0,
+                Date = DateTime.Now,
+                CumulativeAmount = 0
+            });
+        }
+
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        return Ok(new
+        {
+            message = "تم صرف الراتب بنجاح",
+            baseSalary,
+            totalAdvances,
+            netSalary
+        });
+    }
+    catch
+    {
+        await transaction.RollbackAsync();
+        return BadRequest("حدث خطأ أثناء صرف الراتب");
     }
 }
+
+    }
+
+}
+
+
+

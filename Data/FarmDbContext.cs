@@ -44,6 +44,9 @@ public DbSet<EvaluationItem> EvaluationItems { get; set; } = null!;
 public DbSet<CycleEvaluation> CycleEvaluations { get; set; } = null!;
 public DbSet<CycleEvaluationDetail> CycleEvaluationDetails { get; set; } = null!;
 
+public DbSet<CashBoxTransaction> CashBoxTransactions { get; set; }
+public DbSet<Salary> Salaries { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

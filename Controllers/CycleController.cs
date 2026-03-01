@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using FarmManagement.API.Data;
 using FarmManagement.API.Models;
 using FarmManagement.API.DTOs;
+using FarmManagement.API.Helpers;
 
 namespace FarmManagement.API.Controllers
 {
@@ -11,10 +12,12 @@ namespace FarmManagement.API.Controllers
     public class CyclesController : ControllerBase
     {
         private readonly FarmDbContext _context;
+        private readonly EvaluationService _evaluationService;
 
-        public CyclesController(FarmDbContext context)
+        public CyclesController(FarmDbContext context, EvaluationService evaluationService)
         {
             _context = context;
+            _evaluationService = evaluationService;
         }
 
         // ================= GET ALL =================
@@ -26,30 +29,35 @@ namespace FarmManagement.API.Controllers
                 .Include(c => c.Barn)
                 .Include(c => c.BarnManager)
                 .Include(c => c.BarnWorker)
+                .Include(c => c.Evaluations)
+                .ThenInclude(e => e.Details)
                 .OrderByDescending(c => c.Id)
-                .Select(c => new CycleDto
-                {
-                    Id = c.Id,
-                    Name = c.Name,
-                    FarmId = c.FarmId,
-                    FarmName = c.Farm.Name,
-                    BarnId = c.BarnId,
-                    BarnName = c.Barn.Name,
-
-                    BarnManagerId = c.BarnManagerId,
-                    BarnManagerName = c.BarnManager != null ? c.BarnManager.Name : null,
-
-                    BarnWorkerId = c.BarnWorkerId,
-                    BarnWorkerName = c.BarnWorker != null ? c.BarnWorker.Name : null,
-
-                    StartDate = c.StartDate,
-                    EndDate = c.EndDate,
-                    ChickCount = c.ChickCount,
-                    ChickAge = c.ChickAge
-                })
                 .ToListAsync();
 
-            return cycles;
+            var result = cycles.Select(c => new CycleDto
+            {
+                Id = c.Id,
+                Name = c.Name,
+                FarmId = c.FarmId,
+                FarmName = c.Farm.Name,
+                BarnId = c.BarnId,
+                BarnName = c.Barn.Name,
+
+                BarnManagerId = c.BarnManagerId,
+                BarnManagerName = c.BarnManager?.Name,
+
+                BarnWorkerId = c.BarnWorkerId,
+                BarnWorkerName = c.BarnWorker?.Name,
+
+                StartDate = c.StartDate,
+                EndDate = c.EndDate,
+                ChickCount = c.ChickCount,
+                ChickAge = c.ChickAge,
+
+                FinalScore = _evaluationService.CalculateFinalScore(c) // 👈 هنا
+            }).ToList();
+
+            return Ok(result);
         }
 
         // ================= GET BY ID =================
@@ -61,6 +69,8 @@ namespace FarmManagement.API.Controllers
                 .Include(c => c.Barn)
                 .Include(c => c.BarnManager)
                 .Include(c => c.BarnWorker)
+                .Include(c => c.Evaluations)
+                .ThenInclude(e => e.Details)
                 .FirstOrDefaultAsync(c => c.Id == id);
 
             if (c == null) return NotFound();
@@ -83,10 +93,12 @@ namespace FarmManagement.API.Controllers
                 StartDate = c.StartDate,
                 EndDate = c.EndDate,
                 ChickCount = c.ChickCount,
-                ChickAge = c.ChickAge
+                ChickAge = c.ChickAge,
+
+                FinalScore = _evaluationService.CalculateFinalScore(c) // 👈 هنا كمان
             };
 
-            return dto;
+            return Ok(dto);
         }
 
         // ================= CREATE =================
@@ -99,7 +111,7 @@ namespace FarmManagement.API.Controllers
             if (!farmExists) return BadRequest("Farm not found");
             if (!barnExists) return BadRequest("Barn not found");
 
-            // تحقق إن مدير العنبر فعلاً BarnManager
+            // تحقق من صلاحية BarnManager
             if (dto.BarnManagerId.HasValue)
             {
                 var managerValid = await _context.Workers
@@ -109,7 +121,7 @@ namespace FarmManagement.API.Controllers
                     return BadRequest("Invalid Barn Manager");
             }
 
-            // تحقق إن العامل فعلاً BarnWorker
+            // تحقق من صلاحية BarnWorker
             if (dto.BarnWorkerId.HasValue)
             {
                 var workerValid = await _context.Workers
@@ -135,7 +147,36 @@ namespace FarmManagement.API.Controllers
             _context.Cycles.Add(cycle);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetCycle), new { id = cycle.Id }, await GetCycle(cycle.Id));
+            // إرجاع DTO مع FinalScore محسوب (صفر لأنه لسة مفيش تقييمات)
+            var createdCycle = await _context.Cycles
+                .Include(c => c.Farm)
+                .Include(c => c.Barn)
+                .Include(c => c.BarnManager)
+                .Include(c => c.BarnWorker)
+                .Include(c => c.Evaluations)
+                .ThenInclude(e => e.Details)
+                .FirstOrDefaultAsync(c => c.Id == cycle.Id);
+
+            var dtoResult = new CycleDto
+            {
+                Id = createdCycle.Id,
+                Name = createdCycle.Name,
+                FarmId = createdCycle.FarmId,
+                FarmName = createdCycle.Farm.Name,
+                BarnId = createdCycle.BarnId,
+                BarnName = createdCycle.Barn.Name,
+                BarnManagerId = createdCycle.BarnManagerId,
+                BarnManagerName = createdCycle.BarnManager?.Name,
+                BarnWorkerId = createdCycle.BarnWorkerId,
+                BarnWorkerName = createdCycle.BarnWorker?.Name,
+                StartDate = createdCycle.StartDate,
+                EndDate = createdCycle.EndDate,
+                ChickCount = createdCycle.ChickCount,
+                ChickAge = createdCycle.ChickAge,
+                FinalScore = _evaluationService.CalculateFinalScore(createdCycle)
+            };
+
+            return CreatedAtAction(nameof(GetCycle), new { id = dtoResult.Id }, dtoResult);
         }
 
         // ================= UPDATE =================
