@@ -122,7 +122,7 @@ namespace FarmManagement.API.Controllers
             var sales = await _context.EggSales
                 .Include(s => s.Trader)
                 .Include(s => s.Warehouse)
-                .OrderByDescending(s => s.Date)
+                .OrderByDescending(s => s.Id)
                 .Select(s => new EggSaleResponseDto
                 {
                     Id = s.Id,

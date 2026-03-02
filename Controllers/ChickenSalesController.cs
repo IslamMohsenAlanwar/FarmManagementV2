@@ -35,7 +35,7 @@ namespace FarmManagement.API.Controllers
             if (cycle == null)
                 return BadRequest("الدورة غير موجودة.");
 
-            // 🔥 آخر سجل يومي
+            //  آخر سجل يومي
             var lastDailyRecord = await _context.DailyRecords
                 .Where(d => d.CycleId == dto.CycleId)
                 .OrderByDescending(d => d.Date)
@@ -83,16 +83,19 @@ namespace FarmManagement.API.Controllers
                 trader.Balance += remaining;
 
                 // ======= تسجيل العملية في الخزنة =======
+if (dto.PaidAmount > 0)
+{
                 var cashBoxEntry = new CashBoxTransaction
                 {
                     Date = dto.Date,
-                    Type = "Income",
-                    Category = "ChickenSale",
+                    Type = "إيراد",
+                    Category = "بيع فراخ",
                     Amount = dto.PaidAmount, // الفلوس اللي اتدفعت فعلياً
                     Notes = $"بيع فراخ لتاجر {trader.Name}",
                     TraderId = trader.Id
                 };
                 _context.CashBoxTransactions.Add(cashBoxEntry);
+}
                 // =======================================
 
                 await _context.SaveChangesAsync();
@@ -119,7 +122,7 @@ namespace FarmManagement.API.Controllers
             var sales = await _context.ChickenSales
                 .Include(s => s.Trader)
                 .Include(s => s.Cycle)
-                .OrderByDescending(s => s.Date)
+                .OrderByDescending(s => s.Id)
                 .Select(s => new ChickenSaleResponseDto
                 {
                     Id = s.Id,

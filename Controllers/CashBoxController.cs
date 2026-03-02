@@ -17,80 +17,104 @@ namespace FarmManagement.API.Controllers
             _context = context;
         }
 
-        // ✅ عرض كل الحركات
-[HttpGet]
-public async Task<IActionResult> GetAll()
-{
-    var transactions = await _context.CashBoxTransactions
-        .OrderByDescending(t => t.Id) 
-        .ToListAsync();
+        //  عرض كل الحركات (الجديد فوق)
+        [HttpGet]
+        public async Task<IActionResult> GetAll()
+        {
+            var transactions = await _context.CashBoxTransactions
+                .OrderByDescending(t => t.Id)
+                .ToListAsync();
 
-    return Ok(transactions);
-}
+            return Ok(transactions);
+        }
 
-        // ✅ تقرير الخزنة
-[HttpGet("report")]
-public async Task<IActionResult> GetReport(DateTime? from, DateTime? to)
-{
-    var startDate = from ?? DateTime.MinValue;
-    var endDate = to ?? DateTime.MaxValue;
+        //  تقرير الخزنة
+        [HttpGet("report")]
+        public async Task<IActionResult> GetReport(DateTime? from, DateTime? to)
+        {
+            var startDate = from ?? DateTime.MinValue;
+            var endDate = to ?? DateTime.MaxValue;
 
-    var openingTransactions = await _context.CashBoxTransactions
-        .Where(t => t.Date < startDate)
-        .ToListAsync();
+            // 🔹 رصيد أول المدة
+            var openingTransactions = await _context.CashBoxTransactions
+                .Where(t => t.Date < startDate)
+                .ToListAsync();
 
-    var openingIncome = openingTransactions
-        .Where(t => t.Type == "Income")
-        .Sum(t => t.Amount);
+            var openingIncome = openingTransactions
+                .Where(t => t.Type == "Income" || t.Type == "إيراد")
+                .Sum(t => t.Amount);
 
-    var openingExpense = openingTransactions
-        .Where(t => t.Type == "Expense" || t.Type == "منصرف")
-        .Sum(t => t.Amount);
+            var openingExpense = openingTransactions
+                .Where(t => t.Type == "Expense" || t.Type == "منصرف")
+                .Sum(t => t.Amount);
 
-    var openingBalance = openingIncome - openingExpense;
+            var openingBalance = openingIncome - openingExpense;
 
-    var periodTransactions = await _context.CashBoxTransactions
-        .Where(t => t.Date >= startDate && t.Date <= endDate)
-        .OrderByDescending(t => t.Id) 
-        .ToListAsync();
+            // 🔹 حركات الفترة
+            var periodTransactions = await _context.CashBoxTransactions
+                .Where(t => t.Date >= startDate && t.Date <= endDate)
+                .OrderByDescending(t => t.Id)
+                .ToListAsync();
 
-    var totalIncome = periodTransactions
-        .Where(t => t.Type == "Income")
-        .Sum(t => t.Amount);
+            var totalIncome = periodTransactions
+                .Where(t => t.Type == "Income" || t.Type == "إيراد")
+                .Sum(t => t.Amount);
 
-    var totalExpense = periodTransactions
-        .Where(t => t.Type == "Expense" || t.Type == "منصرف")
-        .Sum(t => t.Amount);
+            var totalExpense = periodTransactions
+                .Where(t => t.Type == "Expense" || t.Type == "منصرف")
+                .Sum(t => t.Amount);
 
-    var closingBalance = openingBalance + totalIncome - totalExpense;
+            var closingBalance = openingBalance + totalIncome - totalExpense;
 
-    return Ok(new
-    {
-        openingBalance,
-        totalIncome,
-        totalExpense,
-        closingBalance,
-        transactions = periodTransactions
-    });
-}
+            return Ok(new
+            {
+                openingBalance,
+                totalIncome,
+                totalExpense,
+                closingBalance,
+                transactions = periodTransactions
+            });
+        }
+
+        //  إضافة مصروف آخر
         [HttpPost("expense/other")]
-public async Task<IActionResult> AddOtherExpense([FromBody] CreateExpenseDto dto)
+        public async Task<IActionResult> AddOtherExpense([FromBody] CreateExpenseDto dto)
+        {
+            var date = dto.Date ?? DateTime.Now;
+
+            var expense = new CashBoxTransaction
+            {
+                Date = date,
+                Type = "منصرف",
+                Category = "أخرى",
+                Amount = dto.Amount,
+                Notes = dto.Notes
+            };
+
+            _context.CashBoxTransactions.Add(expense);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "تم تسجيل المصروف بنجاح", expense });
+        }
+//  إضافة إيراد آخر
+[HttpPost("income/other")]
+public async Task<IActionResult> AddOtherIncome([FromBody] CreateExpenseDto dto)
 {
     var date = dto.Date ?? DateTime.Now;
 
-    var expense = new CashBoxTransaction
+    var income = new CashBoxTransaction
     {
         Date = date,
-        Type = "منصرف",
+        Type = "إيراد",
         Category = "أخرى",
         Amount = dto.Amount,
         Notes = dto.Notes
     };
 
-    _context.CashBoxTransactions.Add(expense);
+    _context.CashBoxTransactions.Add(income);
     await _context.SaveChangesAsync();
 
-    return Ok(new { message = "تم تسجيل المصروف بنجاح", expense });
+    return Ok(new { message = "تم تسجيل الإيراد بنجاح", income });
 }
     }
 }
