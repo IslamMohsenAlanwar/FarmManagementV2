@@ -67,6 +67,42 @@ public async Task<IActionResult> Login(LoginDto dto)
     });
 }
 
+  // GET: api/users
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<UserResponseDto>>> GetUsers()
+        {
+            var users = await _context.AppUsers
+                .Select(u => new UserResponseDto
+                {
+                    Id = u.Id,
+                    Username = u.Username,
+                    UserType = u.UserType.ToString() // Employee أو Owner
+                })
+                .ToListAsync();
+
+            return Ok(users);
+        }
+
+        // GET: api/users/1
+        [HttpGet("{id}")]
+        public async Task<ActionResult<UserResponseDto>> GetUser(int id)
+        {
+            var user = await _context.AppUsers
+                .Where(u => u.Id == id)
+                .Select(u => new UserResponseDto
+                {
+                    Id = u.Id,
+                    Username = u.Username,
+                    UserType = u.UserType.ToString()
+                })
+                .FirstOrDefaultAsync();
+
+            if (user == null)
+                return NotFound("المستخدم غير موجود");
+
+            return Ok(user);
+        }
+
     }
 
 }
