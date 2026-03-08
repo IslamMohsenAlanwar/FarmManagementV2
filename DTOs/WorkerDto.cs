@@ -6,9 +6,11 @@ namespace FarmManagement.API.DTOs
         public required string Name { get; set; }
         public string? Phone { get; set; }
         public required string Role { get; set; } 
-          public decimal Salary { get; set; }
-          public int VacationDays { get; set; }
-    public double FinalScore { get; set; }
+        public decimal Salary { get; set; }
+        public int VacationDays { get; set; }
+        public double FinalScore { get; set; }
+        public decimal CumulativeAdvance { get; set; }
+
 
     }
 

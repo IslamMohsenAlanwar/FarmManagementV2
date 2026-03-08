@@ -25,7 +25,7 @@ namespace FarmManagement.API.Controllers
             if (cycleId.HasValue)
                 query = query.Where(d => d.CycleId == cycleId.Value);
 
-            var records = await query.OrderBy(d => d.Date).ToListAsync();
+            var records = await query.OrderByDescending(d => d.Id).ToListAsync();
 
             return records.Select(d =>
             {

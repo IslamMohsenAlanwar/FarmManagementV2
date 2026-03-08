@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using FarmManagement.API.Data;
 using FarmManagement.API.Models;
 using FarmManagement.API.DTOs;
+using FarmManagement.API.Helpers;
+
 
 namespace FarmManagement.API.Controllers
 {
@@ -87,27 +89,28 @@ namespace FarmManagement.API.Controllers
         // Warehouse Transactions (Purchases Only)
      
 
-       [HttpPost("transaction")]
+[HttpPost("transaction")]
 public async Task<ActionResult> AddWarehouseTransaction(WarehouseTransactionCreateDto dto)
 {
-    // التأكد من المورد
     var trader = await _context.Traders.FindAsync(dto.TraderId);
     if (trader == null || trader.Type != TraderType.مورد)
-        return BadRequest("يجب اختيار تاجر من نوع (مورد Supplier) لتنفيذ هذه العملية.");
+        return BadRequest("يجب اختيار تاجر من نوع مورد.");
 
     var date = dto.Date ?? DateTime.Now;
 
     await using var transaction = await _context.Database.BeginTransactionAsync();
     try
     {
-        decimal totalTransactionAmount = 0; // مجموع المصروف
+        decimal totalInvoiceAmount = 0;
 
+        // =========================
+        // تحديث المخزن وتسجيل حركة كل صنف
+        // =========================
         foreach (var itemDto in dto.Items)
         {
             var totalPrice = itemDto.Quantity * itemDto.PricePerTon;
-            totalTransactionAmount += totalPrice;
+            totalInvoiceAmount += totalPrice;
 
-            // تسجيل الحركة في المخزن
             var warehouseTrans = new WarehouseTransaction
             {
                 WarehouseId = dto.WarehouseId,
@@ -121,9 +124,8 @@ public async Task<ActionResult> AddWarehouseTransaction(WarehouseTransactionCrea
             };
             _context.WarehouseTransactions.Add(warehouseTrans);
 
-            // تحديث المخزون
             var warehouseItem = await _context.WarehouseItems
-                .FirstOrDefaultAsync(wi => wi.WarehouseId == dto.WarehouseId && wi.ItemId == itemDto.ItemId);
+                .FirstOrDefaultAsync(x => x.WarehouseId == dto.WarehouseId && x.ItemId == itemDto.ItemId);
 
             if (warehouseItem == null)
             {
@@ -143,28 +145,62 @@ public async Task<ActionResult> AddWarehouseTransaction(WarehouseTransactionCrea
             }
         }
 
-        // ======= تسجيل المصروف في الخزنة =======
-        var cashBoxEntry = new CashBoxTransaction
+        // =========================
+        // تسجيل المدفوع في الخزنة
+        // =========================
+        if (dto.PaidAmount > 0)
         {
-            Date = date,
-            Type = "منصرف",
-            Category = "شراء خامات/أدوية",
-            Amount = totalTransactionAmount,
-            Notes = $"شراء خامات/أدوية من المورد {trader.Name}",
+            var cashBoxEntry = new CashBoxTransaction
+            {
+                Date = date,
+                Type = "منصرف",
+                Category = "شراء خامات/أدوية",
+                Amount = dto.PaidAmount,
+                Notes = $"دفع لـ {trader.Name}",
+                TraderId = trader.Id,
+                WarehouseId = dto.WarehouseId
+            };
+            _context.CashBoxTransactions.Add(cashBoxEntry);
+        }
+
+        // =========================
+        // تحديث Ledger التاجر
+        // =========================
+        var lastLedger = await _context.TraderLedgers
+            .Where(l => l.TraderId == trader.Id)
+            .OrderByDescending(l => l.Id)
+            .FirstOrDefaultAsync();
+
+        decimal previousBalance = lastLedger?.Balance ?? 0;
+        decimal newBalance = previousBalance + totalInvoiceAmount - dto.PaidAmount;
+
+        var ledgerEntry = new TraderLedger
+        {
             TraderId = trader.Id,
-            WarehouseId = dto.WarehouseId
+            Date = date,
+            Debit = totalInvoiceAmount,
+            Credit = dto.PaidAmount,
+            Balance = newBalance,
+            Notes = $"فاتورة توريد للمخزن الرئيسي"
         };
-        _context.CashBoxTransactions.Add(cashBoxEntry);
-        // =======================================
+        _context.TraderLedgers.Add(ledgerEntry);
 
         await _context.SaveChangesAsync();
         await transaction.CommitAsync();
-        return Ok(new { message = "تم تسجيل التوريد وتحديث المخزن والخزنة بنجاح" });
+
+        return Ok(new
+        {
+            message = "تم تسجيل التوريد بنجاح",
+            totalInvoice = totalInvoiceAmount,
+            paid = dto.PaidAmount,
+            remaining = totalInvoiceAmount - dto.PaidAmount,
+            currentTraderBalance = newBalance
+        });
     }
-    catch
+    catch (Exception ex)
     {
         await transaction.RollbackAsync();
-        return BadRequest("حدث خطأ أثناء حفظ البيانات");
+        return BadRequest(new { message = "حدث خطأ أثناء حفظ العملية", error = ex.Message });
     }
 }
 
@@ -213,31 +249,30 @@ public async Task<ActionResult> DeleteTransaction(int id)
 }
 
     
-        // Lookups & Reports
        
-
-        [HttpGet("{warehouseId}/items")]
-        public async Task<ActionResult<IEnumerable<WarehouseItemDto>>> GetWarehouseItems(int warehouseId)
+[HttpGet("{warehouseId}/items")]
+public async Task<ActionResult<IEnumerable<WarehouseItemDto>>> GetWarehouseItems(int warehouseId)
+{
+    var items = await _context.WarehouseItems
+        .Include(wi => wi.Item)
+        .Include(wi => wi.Warehouse)
+        .Where(wi => wi.WarehouseId == warehouseId && wi.Item.ItemType != ItemType.Egg)
+        .OrderByDescending(wi => wi.Id)
+        .Select(wi => new WarehouseItemDto
         {
-            var items = await _context.WarehouseItems
-                .Include(wi => wi.Item)
-                .Include(wi => wi.Warehouse)
-                .Where(wi => wi.WarehouseId == warehouseId)
-.OrderByDescending(wi => wi.Id) 
-                .Select(wi => new WarehouseItemDto
-                {
-                    Id = wi.Id,
-                    WarehouseId = wi.WarehouseId,
-                    WarehouseName = wi.Warehouse.Name,
-                    ItemId = wi.ItemId,
-                    ItemName = wi.Item.Name,
-                    Quantity = wi.Quantity,
-                    PricePerUnit = wi.PricePerUnit,
-                    Withdrawn = wi.Withdrawn
-                })
-                .ToListAsync();
+            Id = wi.Id,
+            WarehouseId = wi.WarehouseId,
+            WarehouseName = wi.Warehouse.Name,
+            ItemId = wi.ItemId,
+            ItemName = wi.Item.Name,
+            Quantity = wi.Quantity,
+            PricePerUnit = wi.PricePerUnit,
+            Withdrawn = wi.Withdrawn,
+            EggQuality = null
+        })
+        .ToListAsync();
 
-            return Ok(items);
-        }
+    return Ok(items);
+}
     }
 }

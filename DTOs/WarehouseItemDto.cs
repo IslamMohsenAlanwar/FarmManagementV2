@@ -13,6 +13,8 @@ namespace FarmManagement.API.DTOs
         public decimal PricePerUnit { get; set; }
         public decimal Withdrawn { get; set; }
 
+        public string? EggQuality { get; set; }
+
     public decimal TotalValue => Quantity * PricePerUnit;
 
     }

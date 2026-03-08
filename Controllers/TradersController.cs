@@ -120,5 +120,92 @@ public async Task<ActionResult<IEnumerable<TraderDto>>> GetTraders([FromQuery] T
             await _context.SaveChangesAsync();
             return NoContent();
         }
+
+        [HttpPost("pay-trader")]
+public async Task<ActionResult> PayTrader([FromBody] PayTraderDto dto)
+{
+    var trader = await _context.Traders.FindAsync(dto.TraderId);
+    if (trader == null)
+        return BadRequest("المورد غير موجود.");
+
+    var date = dto.Date ?? DateTime.Now;
+
+    await using var transaction = await _context.Database.BeginTransactionAsync();
+
+    try
+    {
+        // =========================
+        // تحديث الخزنة بالمبلغ المدفوع
+        // =========================
+        if (dto.Amount > 0 && dto.WarehouseId.HasValue)
+        {
+            var cashBoxEntry = new CashBoxTransaction
+            {
+                Date = date,
+                Type = "منصرف",
+                Category = "دفع لمورد",
+                Amount = dto.Amount,
+                Notes = dto.Notes ?? $"دفع للمورد {trader.Name}",
+                TraderId = trader.Id,
+                WarehouseId = dto.WarehouseId.Value
+            };
+            _context.CashBoxTransactions.Add(cashBoxEntry);
+        }
+
+        // =========================
+        // تحديث Ledger المورد
+        // =========================
+        var lastLedger = await _context.TraderLedgers
+            .Where(l => l.TraderId == trader.Id)
+            .OrderByDescending(l => l.Date)
+            .FirstOrDefaultAsync();
+
+        decimal previousBalance = lastLedger?.Balance ?? 0;
+        if (dto.Amount > previousBalance)
+            return BadRequest($"المبلغ المدفوع أكبر من رصيد المورد الحالي ({previousBalance}).");
+
+        decimal newBalance = previousBalance - dto.Amount;
+
+        var ledgerEntry = new TraderLedger
+        {
+            TraderId = trader.Id,
+            Date = date,
+            Debit = 0,
+            Credit = dto.Amount,
+            Balance = newBalance,
+            Notes = dto.Notes ?? $"دفع لمورد"
+        };
+
+        _context.TraderLedgers.Add(ledgerEntry);
+
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        return Ok(new
+        {
+            message = "تم دفع المبلغ بنجاح",
+            paid = dto.Amount,
+            remainingBalance = newBalance
+        });
+    }
+    catch (Exception)
+    {
+        await transaction.RollbackAsync();
+        return BadRequest("حدث خطأ أثناء تسجيل الدفع");
+    }
+}
+
+
+
+[HttpGet("trader/{traderId}/ledger")]
+public async Task<ActionResult> GetTraderLedger(int traderId)
+{
+    var ledger = await _context.TraderLedgers
+        .Where(l => l.TraderId == traderId)
+        .OrderByDescending(l => l.Id)
+        .ToListAsync();
+
+    return Ok(ledger);
+}
     }
 }

@@ -25,7 +25,7 @@ namespace FarmManagement.API.Controllers
             var trader = await _context.Traders
                 .FirstOrDefaultAsync(t => t.Id == dto.TraderId);
 
-            if (trader == null || trader.Type != TraderType.مشتري)
+            if (trader == null || trader.Type != TraderType.عميل)
                 return BadRequest("يجب اختيار تاجر مسجل كمشتري.");
 
             // الدورة

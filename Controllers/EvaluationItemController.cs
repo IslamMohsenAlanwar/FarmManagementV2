@@ -21,7 +21,9 @@ namespace FarmManagement.API.Controllers
         [HttpGet]
         public async Task<ActionResult<List<EvaluationItem>>> GetAll()
         {
-            return await _context.EvaluationItems.ToListAsync();
+            return await _context.EvaluationItems
+            .OrderByDescending(e => e.Id)
+            .ToListAsync();
         }
 
         // ================= GET single item =================

@@ -145,7 +145,7 @@ public async Task<ActionResult<IEnumerable<TraderDto>>> GetSuppliers()
 public async Task<ActionResult<IEnumerable<TraderDto>>> GetBuyers()
 {
     var buyers = await _context.Traders
-        .Where(t => t.Type == TraderType.مشتري) 
+        .Where(t => t.Type == TraderType.عميل) 
         .OrderBy(t => t.Name)
         .Select(t => new TraderDto
         {
@@ -159,6 +159,25 @@ public async Task<ActionResult<IEnumerable<TraderDto>>> GetBuyers()
         .ToListAsync();
 
     return Ok(buyers);
+}
+
+
+[HttpGet("upcoming-cycles")]
+public async Task<ActionResult<IEnumerable<LookupDto>>> GetUpcomingCycles()
+{
+    var today = DateTime.Today;
+
+    var cycles = await _context.Cycles
+        .Where(c => c.EndDate >= today) // الدورات اللي لسه ما انتهتش
+        .OrderBy(c => c.EndDate)
+        .Select(c => new LookupDto
+        {
+            Id = c.Id,
+            Name = c.Name // ✅ هنا نستخدم اسم الدورة الحقيقي
+        })
+        .ToListAsync();
+
+    return Ok(cycles);
 }
 
 

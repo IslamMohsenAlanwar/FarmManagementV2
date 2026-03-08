@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using FarmManagement.API.DTOs;
-using FarmManagement.API.Data; // DbContext
-using FarmManagement.API.Models; // Models
+using FarmManagement.API.Data;
+using FarmManagement.API.Models;
 
 namespace FarmManagement.API.Controllers
 {
@@ -17,73 +17,109 @@ namespace FarmManagement.API.Controllers
             _context = context;
         }
 
-        // GET /api/daily-summary?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
+        // ================= GET Daily Summary with Pagination =================
         [HttpGet]
-        public async Task<ActionResult<List<DailySummaryDto>>> GetDailySummary(DateTime? startDate, DateTime? endDate)
+        public async Task<ActionResult<object>> GetDailySummary(
+            DateTime? startDate,
+            DateTime? endDate,
+            int? cycleId,
+            int skipCount = 0,
+            int maxResultCount = 7) // افتراضي 7
         {
-            var fromDate = startDate ?? DateTime.Today.AddDays(-7); // افتراضي آخر 7 أيام
-            var toDate = endDate ?? DateTime.Today;
+            // تحديد بداية ونهاية اليوم
+            var fromDate = startDate?.Date ?? DateTime.Today.AddDays(-7);
+            var toDate = (endDate?.Date ?? DateTime.Today).AddDays(1).AddTicks(-1);
 
-            // جلب جميع الدورات التي تغطي الفترة المطلوبة
-            var cycles = await _context.Cycles
-                .Where(c => c.StartDate <= toDate && c.EndDate >= fromDate)
+            // جلب الدورات ضمن الفترة المطلوبة
+            var cyclesQuery = _context.Cycles
+                .Where(c => c.StartDate <= toDate && c.EndDate >= fromDate);
+
+            if (cycleId.HasValue)
+                cyclesQuery = cyclesQuery.Where(c => c.Id == cycleId.Value);
+
+            var cycles = await cyclesQuery
                 .Select(c => new { c.Id, c.Name })
                 .ToListAsync();
 
-            // جلب جميع سجلات اليوم لهذه الفترة
+            // جلب السجلات ضمن الفترة
             var dailyRecords = await _context.DailyRecords
-                .Where(d => d.Date.Date >= fromDate.Date && d.Date.Date <= toDate.Date)
+                .Where(d => d.Date >= fromDate && d.Date <= toDate)
                 .Include(d => d.FeedConsumptions)
                 .ToListAsync();
 
-            // جلب انتاج البيض لهذه الفترة
             var eggProductions = await _context.EggProductionRecords
-                .Include(e => e.Details)
-                .Where(e => e.Date.Date >= fromDate.Date && e.Date.Date <= toDate.Date)
+                .Where(e => e.Date >= fromDate && e.Date <= toDate)
                 .ToListAsync();
 
-            // جلب مبيعات البيض لهذه الفترة
             var eggSales = await _context.EggSales
-                .Where(s => s.Date.Date >= fromDate.Date && s.Date.Date <= toDate.Date)
+                .Where(s => s.Date >= fromDate && s.Date <= toDate)
                 .ToListAsync();
 
+            // تجميع الملخص
             var summaryList = new List<DailySummaryDto>();
 
-            // حلقة لكل يوم ولكل دورة
             for (var date = fromDate.Date; date <= toDate.Date; date = date.AddDays(1))
             {
                 foreach (var cycle in cycles)
                 {
-                    // نتأكد اليوم ضمن فترة الدورة
-                    var dailyRecord = dailyRecords.FirstOrDefault(d => d.CycleId == cycle.Id && d.Date.Date == date);
-                    var eggProduction = eggProductions.FirstOrDefault(e => e.Id == cycle.Id && e.Date.Date == date);
-                    var eggsSold = eggSales.Where(s => s.Id == cycle.Id && s.Date.Date == date).Sum(s => s.Quantity);
+                    var dailyRecord = dailyRecords
+                        .FirstOrDefault(d => d.CycleId == cycle.Id && d.Date.Date == date);
 
-                    var summary = new DailySummaryDto
+                    var eggProduction = eggProductions
+                        .FirstOrDefault(e => e.CycleId == cycle.Id && e.Date.Date == date);
+
+                    var eggsSold = eggSales
+                        .Where(s => s.Date.Date == date)
+                        .Sum(s => s.Quantity);
+
+                    summaryList.Add(new DailySummaryDto
                     {
                         Date = date,
                         DayName = date.DayOfWeek.ToString(),
                         CycleName = cycle.Name,
                         ChickAge = dailyRecord?.ChickAge ?? 0,
-
-                        // هنا نستخدم TotalEggs مباشرة لأنه ما عندنا Type في DTO
+                        DeadCount = dailyRecord?.DeadCount ?? 0,
+                        FeedConsumed = (int)(dailyRecord?.FeedConsumptions.Sum(f => f.Quantity) ?? 0),
                         EggsGood = eggProduction?.TotalEggs ?? 0,
                         EggsBroken = 0,
                         EggsDouble = 0,
                         EggsTotal = eggProduction?.TotalEggs ?? 0,
-
-                        DeadCount = dailyRecord?.DeadCount ?? 0,
-                        FeedConsumed = (int)(dailyRecord?.FeedConsumptions.Sum(f => f.Quantity) ?? 0),
-
                         EggsSold = eggsSold
-                    };
-
-                    summaryList.Add(summary);
+                    });
                 }
             }
 
-            // ترتيب النتائج حسب التاريخ ثم اسم الدورة
-            return Ok(summaryList.OrderBy(s => s.Date).ThenBy(s => s.CycleName));
+            // ترتيب السجلات
+            var orderedList = summaryList
+                .OrderByDescending(s => s.Date)
+                .ThenBy(s => s.CycleName)
+                .ToList();
+
+            // تطبيق البجنيشن
+            var pagedItems = orderedList
+                .Skip(skipCount)
+                .Take(maxResultCount)
+                .ToList();
+
+            return Ok(new
+            {
+                items = pagedItems,
+                totalCount = orderedList.Count,
+                fullResult = false
+            });
+        }
+
+        // ================= DELETE All Data =================
+        [HttpDelete("delete-all")]
+        public async Task<ActionResult> DeleteAllDailyData()
+        {
+            _context.DailyRecords.RemoveRange(_context.DailyRecords);
+            _context.EggProductionRecords.RemoveRange(_context.EggProductionRecords);
+            _context.EggSales.RemoveRange(_context.EggSales);
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "تم مسح كل البيانات بنجاح" });
         }
     }
 }

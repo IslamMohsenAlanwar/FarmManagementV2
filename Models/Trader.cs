@@ -3,7 +3,7 @@ namespace FarmManagement.API.Models
     public enum TraderType 
     { 
         مورد=1, // مورد (علف، أدوية، خامات)
-        مشتري=2     // مشتري (تاجر بيض)
+        عميل=2     // مشتري (تاجر بيض)
     }
 
     public class Trader

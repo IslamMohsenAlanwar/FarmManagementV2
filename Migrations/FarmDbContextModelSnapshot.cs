@@ -839,6 +839,41 @@ namespace FarmManagement.API.Migrations
                     b.ToTable("Traders");
                 });
 
+            modelBuilder.Entity("FarmManagement.API.Models.TraderLedger", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Balance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Credit")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Debit")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("TraderId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("TraderLedgers");
+                });
+
             modelBuilder.Entity("FarmManagement.API.Models.Vacation", b =>
                 {
                     b.Property<int>("Id")
@@ -900,6 +935,9 @@ namespace FarmManagement.API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("EggQuality")
+                        .HasColumnType("int");
+
                     b.Property<int>("ItemId")
                         .HasColumnType("int");
 
@@ -945,11 +983,18 @@ namespace FarmManagement.API.Migrations
                     b.Property<int?>("EggProductionRecordId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("EggQuality")
+                        .HasColumnType("int");
+
                     b.Property<int?>("EggSaleId")
                         .HasColumnType("int");
 
                     b.Property<int>("ItemId")
                         .HasColumnType("int");
+
+                    b.Property<decimal>("PaidAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("PricePerTon")
                         .HasPrecision(18, 2)
@@ -1377,7 +1422,7 @@ namespace FarmManagement.API.Migrations
             modelBuilder.Entity("FarmManagement.API.Models.WarehouseTransaction", b =>
                 {
                     b.HasOne("FarmManagement.API.Models.EggSale", "EggSale")
-                        .WithMany()
+                        .WithMany("WarehouseTransactions")
                         .HasForeignKey("EggSaleId");
 
                     b.HasOne("FarmManagement.API.Models.Item", "Item")
@@ -1444,6 +1489,11 @@ namespace FarmManagement.API.Migrations
             modelBuilder.Entity("FarmManagement.API.Models.EggProductionRecord", b =>
                 {
                     b.Navigation("Details");
+                });
+
+            modelBuilder.Entity("FarmManagement.API.Models.EggSale", b =>
+                {
+                    b.Navigation("WarehouseTransactions");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.Farm", b =>

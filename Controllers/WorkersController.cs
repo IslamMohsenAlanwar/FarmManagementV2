@@ -66,47 +66,55 @@ namespace FarmManagement.API.Controllers
             return CreatedAtAction(nameof(GetWorkerById), new { id = worker.Id }, result);
         }
 
-        // ===== GET ALL WITH FinalScore =====
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<WorkerDto>>> GetWorkers()
+        // ===== GET ALL =====
+[HttpGet]
+public async Task<ActionResult<IEnumerable<WorkerDto>>> GetWorkers()
+{
+    var workers = await _context.Workers
+        .OrderByDescending(w => w.Id)
+        .ToListAsync();
+
+    var result = workers.Select(w =>
+    {
+        double finalScore = 0;
+
+        // جلب آخر دورة مرتبطة بالـ Worker
+        var lastCycle = _context.Cycles
+            .Include(c => c.Evaluations)
+            .ThenInclude(e => e.Details)
+            .Where(c => (w.Role == WorkerRole.BarnWorker && c.BarnWorkerId == w.Id) ||
+                        (w.Role == WorkerRole.BarnManager && c.BarnManagerId == w.Id))
+            .OrderByDescending(c => c.Id)
+            .FirstOrDefault();
+
+        if (lastCycle != null)
         {
-            var workers = await _context.Workers
-                .OrderByDescending(w => w.Id)
-                .ToListAsync();
-
-            var result = workers.Select(w =>
-            {
-                double finalScore = 0;
-
-                // جلب آخر دورة مرتبطة بالـ Worker
-                var lastCycle = _context.Cycles
-                    .Include(c => c.Evaluations)
-                    .ThenInclude(e => e.Details)
-                    .Where(c => (w.Role == WorkerRole.BarnWorker && c.BarnWorkerId == w.Id) ||
-                                (w.Role == WorkerRole.BarnManager && c.BarnManagerId == w.Id))
-                    .OrderByDescending(c => c.Id)
-                    .FirstOrDefault();
-
-                if (lastCycle != null)
-                {
-                    // حساب FinalScore باستخدام EvaluationService
-                    finalScore = _evaluationService.CalculateFinalScore(lastCycle);
-                }
-
-                return new WorkerDto
-                {
-                    Id = w.Id,
-                    Name = w.Name,
-                    Phone = w.Phone,
-                    Role = RoleToString(w.Role),
-                    Salary = w.Salary,
-                    VacationDays = w.VacationDays,
-                    FinalScore = finalScore
-                };
-            });
-
-            return Ok(result);
+            // حساب FinalScore باستخدام EvaluationService
+            finalScore = _evaluationService.CalculateFinalScore(lastCycle);
         }
+
+        // ✅ جلب مجموع السلف الحالية
+        var cumulativeAdvance = _context.Advances
+            .Where(a => a.WorkerId == w.Id)
+            .OrderByDescending(a => a.Id)
+            .Select(a => a.CumulativeAmount)
+            .FirstOrDefault();
+
+        return new WorkerDto
+        {
+            Id = w.Id,
+            Name = w.Name,
+            Phone = w.Phone,
+            Role = RoleToString(w.Role),
+            Salary = w.Salary,
+            VacationDays = w.VacationDays,
+            FinalScore = finalScore,
+            CumulativeAdvance = cumulativeAdvance
+        };
+    });
+
+    return Ok(result);
+}
 
         [HttpGet("{id}")]
         public async Task<ActionResult<WorkerDto>> GetWorkerById(int id)

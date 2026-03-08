@@ -18,6 +18,8 @@ namespace FarmManagement.API.Models
 
         public decimal PricePerTon { get; set; } 
         public decimal TotalPrice { get; set; }
+        public decimal PaidAmount { get; set; } 
+
 
         public DateTime Date { get; set; }
 
@@ -27,5 +29,6 @@ namespace FarmManagement.API.Models
 
         public int? EggSaleId { get; set; }
         public EggSale? EggSale { get; set; }
+        public EggQualityType? EggQuality { get; set; }
     }
 }

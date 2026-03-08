@@ -15,7 +15,7 @@ namespace FarmManagement.API.Models
         public Trader Trader { get; set; } = null!;
 
         public DateTime Date { get; set; }
-        
+
         public decimal Quantity { get; set; } 
 
         [Column(TypeName = "decimal(18,2)")]
@@ -31,5 +31,8 @@ namespace FarmManagement.API.Models
         public decimal RemainingAmount { get; set; } 
         
         public string? Notes { get; set; }
+
+        public ICollection<WarehouseTransaction> WarehouseTransactions { get; set; } = new List<WarehouseTransaction>();
+
     }
 }

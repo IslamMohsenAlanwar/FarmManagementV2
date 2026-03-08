@@ -203,7 +203,7 @@ namespace FarmManagement.API.Controllers
                     .ThenInclude(i => i.AssetItem)
                 .Include(t => t.TargetBarn)
                 .Where(t => t.AssetWarehouseItem.AssetWarehouseId == warehouse.Id)
-                .OrderByDescending(t => t.Date)
+                .OrderByDescending(t => t.Id)
                 .ToListAsync();
 
             // =====  DTO =====
@@ -216,7 +216,7 @@ namespace FarmManagement.API.Controllers
                 Quantity = t.Quantity,
                 InBarnsQuantity = t.AssetWarehouseItem.InBarnsQuantity,
                 UnitPrice = t.AssetWarehouseItem.UnitPrice,
-                TotalValue = t.AssetWarehouseItem.Quantity * t.AssetWarehouseItem.UnitPrice,
+                TotalValue = t.Quantity * t.AssetWarehouseItem.UnitPrice,
                 WarehouseId = t.AssetWarehouseItem.AssetWarehouseId,
                 WarehouseName = warehouse.Name,
                 FarmId = warehouse.FarmId,

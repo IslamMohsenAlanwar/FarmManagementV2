@@ -20,6 +20,8 @@ namespace FarmManagement.API.Models
 
         public string Type { get; set; } = string.Empty;
 
+        public EggQualityType? EggQuality { get; set; }
+
         [NotMapped]
         public int FarmId => Warehouse.FarmId;
     }

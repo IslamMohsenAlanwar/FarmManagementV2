@@ -49,6 +49,8 @@ public DbSet<Salary> Salaries { get; set; }
 
 public DbSet<AppUser> AppUsers { get; set; }
 
+public DbSet<TraderLedger> TraderLedgers { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

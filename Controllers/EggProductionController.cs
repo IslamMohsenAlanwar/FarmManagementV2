@@ -6,6 +6,7 @@ using FarmManagement.API.DTOs;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
+using FarmManagement.API.Helpers;
 
 namespace FarmManagement.API.Controllers
 {
@@ -48,13 +49,11 @@ namespace FarmManagement.API.Controllers
                 };
 
                 int totalEggs = 0;
-                int totalCartons = 0;
 
                 foreach (var d in dto.Details)
                 {
                     var eggs = d.CartonsCount * EggsPerCarton;
                     totalEggs += eggs;
-                    totalCartons += d.CartonsCount;
 
                     record.Details.Add(new EggProductionDetail
                     {
@@ -71,38 +70,50 @@ namespace FarmManagement.API.Controllers
                 await _context.SaveChangesAsync();
 
                 // ===== تحديث المخزن =====
-                var eggItem = await _context.Items.FirstOrDefaultAsync(i => i.ItemType == ItemType.Egg);
-                var eggWarehouse = await _context.Warehouses.FirstOrDefaultAsync(w => w.FarmId == dto.FarmId);
+                var eggItem = await _context.Items
+                    .FirstOrDefaultAsync(i => i.ItemType == ItemType.Egg);
+
+                var eggWarehouse = await _context.Warehouses
+                    .FirstOrDefaultAsync(w => w.FarmId == dto.FarmId);
 
                 if (eggItem == null || eggWarehouse == null)
                     return BadRequest("Egg item or warehouse not configured.");
 
-                var warehouseItem = await _context.WarehouseItems
-                    .FirstOrDefaultAsync(w => w.WarehouseId == eggWarehouse.Id && w.ItemId == eggItem.Id);
-
-                if (warehouseItem == null)
+                foreach (var d in dto.Details)
                 {
-                    warehouseItem = new WarehouseItem
+                    var warehouseItem = await _context.WarehouseItems
+                        .FirstOrDefaultAsync(w =>
+                            w.WarehouseId == eggWarehouse.Id &&
+                            w.ItemId == eggItem.Id &&
+                            w.EggQuality == d.EggQuality);
+
+                    if (warehouseItem == null)
+                    {
+                        warehouseItem = new WarehouseItem
+                        {
+                            WarehouseId = eggWarehouse.Id,
+                            ItemId = eggItem.Id,
+                            EggQuality = d.EggQuality,
+                            Quantity = 0,
+                            Type = "Egg"
+                        };
+
+                        _context.WarehouseItems.Add(warehouseItem);
+                    }
+
+                    warehouseItem.Quantity += d.CartonsCount;
+
+                    _context.WarehouseTransactions.Add(new WarehouseTransaction
                     {
                         WarehouseId = eggWarehouse.Id,
                         ItemId = eggItem.Id,
-                        Quantity = 0,
-                        Type = "Egg"
-                    };
-                    _context.WarehouseItems.Add(warehouseItem);
+                        Quantity = d.CartonsCount,
+                        Date = dto.Date,
+                        TransactionType = "EggProduction",
+                        EggQuality = d.EggQuality,
+                        EggProductionRecordId = record.Id
+                    });
                 }
-
-                warehouseItem.Quantity += totalCartons;
-
-                _context.WarehouseTransactions.Add(new WarehouseTransaction
-                {
-                    WarehouseId = eggWarehouse.Id,
-                    ItemId = eggItem.Id,
-                    Quantity = totalCartons,
-                    Date = dto.Date,
-                    TransactionType = "EggProduction",
-                    EggProductionRecordId = record.Id
-                });
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -117,7 +128,7 @@ namespace FarmManagement.API.Controllers
                     Notes = record.Notes,
                     Details = record.Details.Select(d => new EggProductionDetailDto
                     {
-                        EggQuality = d.EggQuality.ToString(),
+                        EggQuality = d.EggQuality.ToArabic(),
                         CartonsCount = d.CartonsCount,
                         TotalEggs = d.TotalEggs
                     }).ToList()
@@ -140,13 +151,13 @@ namespace FarmManagement.API.Controllers
                 .Include(r => r.Barn)
                 .Include(r => r.Details)
                 .Where(r => r.FarmId == farmId)
-                .OrderBy(r => r.Date)
+                .OrderByDescending(r => r.Date) 
                 .ToListAsync();
 
             var result = records.SelectMany(r => r.Details.Select(d => new EggProductionByBarnDto
             {
                 BarnName = r.Barn.Name,
-                EggQuality = d.EggQuality.ToString(),
+                EggQuality = d.EggQuality.ToArabic(),
                 CartonsCount = d.CartonsCount,
                 TotalEggs = d.TotalEggs,
                 Day = arabicCulture.DateTimeFormat.GetDayName(r.Date.DayOfWeek),
@@ -155,5 +166,34 @@ namespace FarmManagement.API.Controllers
 
             return Ok(result);
         }
+
+
+
+
+        [HttpGet("farm/{farmId}/warehouse-eggs")]
+        // مخزن البيض
+public async Task<ActionResult<IEnumerable<WarehouseItemDto>>> GetEggWarehouseItems(int farmId)
+{
+    var items = await _context.WarehouseItems
+        .Include(wi => wi.Item)
+        .Include(wi => wi.Warehouse)
+        .Where(wi => wi.Warehouse.FarmId == farmId && wi.Item.ItemType == ItemType.Egg)
+        .OrderByDescending(wi => wi.Id)
+        .Select(wi => new WarehouseItemDto
+        {
+            Id = wi.Id,
+            WarehouseId = wi.WarehouseId,
+            WarehouseName = wi.Warehouse.Name,
+            ItemId = wi.ItemId,
+            ItemName = wi.Item.Name,
+            Quantity = wi.Quantity,
+            PricePerUnit = wi.PricePerUnit,
+            Withdrawn = wi.Withdrawn,
+            EggQuality = wi.EggQuality.HasValue ? wi.EggQuality.Value.ToArabic() : null
+        })
+        .ToListAsync();
+
+    return Ok(items);
+}
     }
 }
