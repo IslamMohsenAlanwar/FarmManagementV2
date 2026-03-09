@@ -117,12 +117,18 @@ if (dto.PaidAmount > 0)
 
         // ================= GET SALES =================
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ChickenSaleResponseDto>>> GetSales()
+        public async Task<ActionResult> GetSales(int SkipCount = 0, int MaxResultCount = 7) // القيمة الافتراضية 7
         {
-            var sales = await _context.ChickenSales
+            var query = _context.ChickenSales
                 .Include(s => s.Trader)
                 .Include(s => s.Cycle)
-                .OrderByDescending(s => s.Id)
+                .OrderByDescending(s => s.Id);
+
+            var totalCount = await query.CountAsync();
+
+            var sales = await query
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
                 .Select(s => new ChickenSaleResponseDto
                 {
                     Id = s.Id,
@@ -138,7 +144,11 @@ if (dto.PaidAmount > 0)
                 })
                 .ToListAsync();
 
-            return Ok(sales);
+            return Ok(new
+            {
+                TotalCount = totalCount,
+                Sales = sales
+            });
         }
     }
 }

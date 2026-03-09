@@ -143,15 +143,24 @@ namespace FarmManagement.API.Controllers
 
         // ================= GET: By Farm =================
         [HttpGet("farm/{farmId}/eggs")]
-        public async Task<ActionResult<IEnumerable<EggProductionByBarnDto>>> GetEggProductionByFarm(int farmId)
+        public async Task<ActionResult> GetEggProductionByFarm(
+        int farmId,
+        int SkipCount = 0,
+        int MaxResultCount = 7)  // القيمة الافتراضية 7
         {
             var arabicCulture = new CultureInfo("ar-EG");
 
-            var records = await _context.EggProductionRecords
+            var query = _context.EggProductionRecords
                 .Include(r => r.Barn)
                 .Include(r => r.Details)
                 .Where(r => r.FarmId == farmId)
-                .OrderByDescending(r => r.Date) 
+                .OrderByDescending(r => r.Date);
+
+            var totalCount = await query.CountAsync();
+
+            var records = await query
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
                 .ToListAsync();
 
             var result = records.SelectMany(r => r.Details.Select(d => new EggProductionByBarnDto
@@ -164,36 +173,50 @@ namespace FarmManagement.API.Controllers
                 Date = r.Date
             })).ToList();
 
-            return Ok(result);
+            return Ok(new
+            {
+                TotalCount = totalCount,
+                EggRecords = result
+            });
         }
 
 
-
-
         [HttpGet("farm/{farmId}/warehouse-eggs")]
-        // مخزن البيض
-public async Task<ActionResult<IEnumerable<WarehouseItemDto>>> GetEggWarehouseItems(int farmId)
-{
-    var items = await _context.WarehouseItems
-        .Include(wi => wi.Item)
-        .Include(wi => wi.Warehouse)
-        .Where(wi => wi.Warehouse.FarmId == farmId && wi.Item.ItemType == ItemType.Egg)
-        .OrderByDescending(wi => wi.Id)
-        .Select(wi => new WarehouseItemDto
+        public async Task<ActionResult> GetEggWarehouseItems(
+    int farmId,
+    int SkipCount = 0,
+    int MaxResultCount = 7)  // القيمة الافتراضية 7
         {
-            Id = wi.Id,
-            WarehouseId = wi.WarehouseId,
-            WarehouseName = wi.Warehouse.Name,
-            ItemId = wi.ItemId,
-            ItemName = wi.Item.Name,
-            Quantity = wi.Quantity,
-            PricePerUnit = wi.PricePerUnit,
-            Withdrawn = wi.Withdrawn,
-            EggQuality = wi.EggQuality.HasValue ? wi.EggQuality.Value.ToArabic() : null
-        })
-        .ToListAsync();
+            var query = _context.WarehouseItems
+                .Include(wi => wi.Item)
+                .Include(wi => wi.Warehouse)
+                .Where(wi => wi.Warehouse.FarmId == farmId && wi.Item.ItemType == ItemType.Egg)
+                .OrderByDescending(wi => wi.Id);
 
-    return Ok(items);
-}
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
+                .Select(wi => new WarehouseItemDto
+                {
+                    Id = wi.Id,
+                    WarehouseId = wi.WarehouseId,
+                    WarehouseName = wi.Warehouse.Name,
+                    ItemId = wi.ItemId,
+                    ItemName = wi.Item.Name,
+                    Quantity = wi.Quantity,
+                    PricePerUnit = wi.PricePerUnit,
+                    Withdrawn = wi.Withdrawn,
+                    EggQuality = wi.EggQuality.HasValue ? wi.EggQuality.Value.ToArabic() : null
+                })
+                .ToListAsync();
+
+            return Ok(new
+            {
+                TotalCount = totalCount,
+                WarehouseEggs = items
+            });
+        }
     }
 }

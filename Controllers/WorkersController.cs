@@ -67,54 +67,66 @@ namespace FarmManagement.API.Controllers
         }
 
         // ===== GET ALL =====
-[HttpGet]
-public async Task<ActionResult<IEnumerable<WorkerDto>>> GetWorkers()
-{
-    var workers = await _context.Workers
-        .OrderByDescending(w => w.Id)
-        .ToListAsync();
 
-    var result = workers.Select(w =>
-    {
-        double finalScore = 0;
-
-        // جلب آخر دورة مرتبطة بالـ Worker
-        var lastCycle = _context.Cycles
-            .Include(c => c.Evaluations)
-            .ThenInclude(e => e.Details)
-            .Where(c => (w.Role == WorkerRole.BarnWorker && c.BarnWorkerId == w.Id) ||
-                        (w.Role == WorkerRole.BarnManager && c.BarnManagerId == w.Id))
-            .OrderByDescending(c => c.Id)
-            .FirstOrDefault();
-
-        if (lastCycle != null)
+        [HttpGet]
+        public async Task<ActionResult> GetWorkers([FromQuery] int SkipCount = 0, [FromQuery] int MaxResultCount = 7)
         {
-            // حساب FinalScore باستخدام EvaluationService
-            finalScore = _evaluationService.CalculateFinalScore(lastCycle);
+            // جلب كل العمال مع Pagination
+            var workersQuery = _context.Workers
+                .OrderByDescending(w => w.Id)
+                .Skip(SkipCount)
+                .Take(MaxResultCount);
+
+            var totalCount = await _context.Workers.CountAsync();
+
+            var workers = await workersQuery.ToListAsync();
+
+            // جلب آخر دورة لكل العمال دفعة واحدة لتقليل الاستعلامات
+            var workerIds = workers.Select(w => w.Id).ToList();
+
+            var lastCycles = await _context.Cycles
+                .Where(c => workerIds.Contains(c.BarnWorkerId ?? 0) || workerIds.Contains(c.BarnManagerId ?? 0))
+                .Include(c => c.Evaluations)
+                .ThenInclude(e => e.Details)
+                .GroupBy(c => (c.BarnWorkerId ?? c.BarnManagerId))
+                .Select(g => g.OrderByDescending(c => c.Id).FirstOrDefault())
+                .ToListAsync();
+
+            // جلب مجموع السلف لكل العمال دفعة واحدة
+            var advances = await _context.Advances
+                .Where(a => workerIds.Contains(a.WorkerId))
+                .GroupBy(a => a.WorkerId)
+                .Select(g => new { WorkerId = g.Key, CumulativeAdvance = g.OrderByDescending(a => a.Id).FirstOrDefault()!.CumulativeAmount })
+                .ToListAsync();
+
+            var result = workers.Select(w =>
+            {
+                var lastCycle = lastCycles.FirstOrDefault(c => (w.Role == WorkerRole.BarnWorker && c.BarnWorkerId == w.Id) ||
+                                                               (w.Role == WorkerRole.BarnManager && c.BarnManagerId == w.Id));
+
+                double finalScore = lastCycle != null ? _evaluationService.CalculateFinalScore(lastCycle) : 0;
+
+                var cumulativeAdvance = advances.FirstOrDefault(a => a.WorkerId == w.Id)?.CumulativeAdvance ?? 0;
+
+                return new WorkerDto
+                {
+                    Id = w.Id,
+                    Name = w.Name,
+                    Phone = w.Phone,
+                    Role = RoleToString(w.Role),
+                    Salary = w.Salary,
+                    VacationDays = w.VacationDays,
+                    FinalScore = finalScore,
+                    CumulativeAdvance = cumulativeAdvance
+                };
+            });
+
+            return Ok(new
+            {
+                TotalCount = totalCount,
+                Workers = result
+            });
         }
-
-        // ✅ جلب مجموع السلف الحالية
-        var cumulativeAdvance = _context.Advances
-            .Where(a => a.WorkerId == w.Id)
-            .OrderByDescending(a => a.Id)
-            .Select(a => a.CumulativeAmount)
-            .FirstOrDefault();
-
-        return new WorkerDto
-        {
-            Id = w.Id,
-            Name = w.Name,
-            Phone = w.Phone,
-            Role = RoleToString(w.Role),
-            Salary = w.Salary,
-            VacationDays = w.VacationDays,
-            FinalScore = finalScore,
-            CumulativeAdvance = cumulativeAdvance
-        };
-    });
-
-    return Ok(result);
-}
 
         [HttpGet("{id}")]
         public async Task<ActionResult<WorkerDto>> GetWorkerById(int id)
@@ -246,11 +258,15 @@ public async Task<ActionResult<IEnumerable<WorkerDto>>> GetWorkers()
         }
 
         [HttpGet("vacations")]
-        public async Task<ActionResult<IEnumerable<VacationRecordDto>>> GetAllVacations()
+        public async Task<ActionResult> GetAllVacations([FromQuery] int SkipCount = 0, [FromQuery] int MaxResultCount = 7)
         {
+            var totalCount = await _context.Vacations.CountAsync();
+
             var vacations = await _context.Vacations
                 .Include(v => v.Worker)
                 .OrderBy(v => v.StartDate)
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
                 .Select(v => new VacationRecordDto
                 {
                     Id = v.Id,
@@ -262,7 +278,11 @@ public async Task<ActionResult<IEnumerable<WorkerDto>>> GetWorkers()
                 })
                 .ToListAsync();
 
-            return Ok(vacations);
+            return Ok(new
+            {
+                TotalCount = totalCount,
+                Vacations = vacations
+            });
         }
 
         [HttpGet("vacations/{workerId}")]
@@ -346,11 +366,15 @@ public async Task<IActionResult> AddAdvance([FromBody] CreateAdvanceDto dto)
 }
 
         [HttpGet("advances")]
-        public async Task<ActionResult<IEnumerable<AdvanceRecordDto>>> GetAllAdvances()
+        public async Task<ActionResult> GetAllAdvances([FromQuery] int SkipCount = 0, [FromQuery] int MaxResultCount = 7)
         {
+            var totalCount = await _context.Advances.CountAsync();
+
             var advances = await _context.Advances
                 .Include(a => a.Worker)
                 .OrderBy(a => a.Date)
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
                 .Select(a => new AdvanceRecordDto
                 {
                     Id = a.Id,
@@ -361,7 +385,11 @@ public async Task<IActionResult> AddAdvance([FromBody] CreateAdvanceDto dto)
                 })
                 .ToListAsync();
 
-            return Ok(advances);
+            return Ok(new
+            {
+                TotalCount = totalCount,
+                Advances = advances
+            });
         }
 
         [HttpGet("advances/{workerId}")]

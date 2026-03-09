@@ -15,7 +15,10 @@ namespace FarmManagement.API.Controllers
 
         // ================= GET =================
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<DailyRecordDto>>> GetDailyRecords([FromQuery] int? cycleId)
+        public async Task<ActionResult> GetDailyRecords(
+       [FromQuery] int? cycleId,
+       [FromQuery] int SkipCount = 0,
+       [FromQuery] int MaxResultCount = 7)  // القيمة الافتراضية 7
         {
             var query = _context.DailyRecords
                         .Include(d => d.FeedConsumptions).ThenInclude(f => f.Item)
@@ -25,9 +28,15 @@ namespace FarmManagement.API.Controllers
             if (cycleId.HasValue)
                 query = query.Where(d => d.CycleId == cycleId.Value);
 
-            var records = await query.OrderByDescending(d => d.Id).ToListAsync();
+            var totalCount = await query.CountAsync();
 
-            return records.Select(d =>
+            var recordsList = await query
+                .OrderByDescending(d => d.Id)
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
+                .ToListAsync();
+
+            var recordsDto = recordsList.Select(d =>
             {
                 var egyptDate = TimeZoneHelper.ToEgyptTime(d.Date);
 
@@ -58,6 +67,12 @@ namespace FarmManagement.API.Controllers
                     }).ToList()
                 };
             }).ToList();
+
+            return Ok(new
+            {
+                TotalCount = totalCount,
+                DailyRecords = recordsDto
+            });
         }
 
         // ================= POST =================

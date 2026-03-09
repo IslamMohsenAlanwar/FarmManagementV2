@@ -18,33 +18,45 @@ namespace FarmManagement.API.Controllers
         }
 
         // GET: api/feedmix
+
         [HttpGet]
-public async Task<ActionResult<IEnumerable<FeedMixDto>>> GetFeedMixes()
-{
-    var feedMixes = await _context.FeedMixes
-        .Include(fm => fm.FeedType)
-        .Include(fm => fm.Details)
-            .ThenInclude(d => d.Item)
-        .OrderByDescending(fm => fm.Id) 
-        .ToListAsync();
-
-  
-    var result = feedMixes.Select(fm => new FeedMixDto
-    {
-        Id = fm.Id,
-        Name = $"{fm.FeedType.Name} - خلطة جاهزة",
-        TotalWeight = fm.TotalWeight,
-        TotalPrice = fm.TotalPrice,
-        Items = fm.Details.Select(d => new FeedMixDetailDto
+        public async Task<ActionResult> GetFeedMixes(
+    int SkipCount = 0,
+    int MaxResultCount = 7) // القيمة الافتراضية 7
         {
-            ItemId = d.ItemId,
-            ItemName = d.Item.Name,
-            Quantity = d.Quantity
-        }).ToList()
-    }).ToList();
+            var query = _context.FeedMixes
+                .Include(fm => fm.FeedType)
+                .Include(fm => fm.Details)
+                    .ThenInclude(d => d.Item)
+                .OrderByDescending(fm => fm.Id);
 
-    return Ok(result);
-}
+            var totalCount = await query.CountAsync();
+
+            var feedMixesList = await query
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
+                .ToListAsync();
+
+            var result = feedMixesList.Select(fm => new FeedMixDto
+            {
+                Id = fm.Id,
+                Name = $"{fm.FeedType.Name} - خلطة جاهزة",
+                TotalWeight = fm.TotalWeight,
+                TotalPrice = fm.TotalPrice,
+                Items = fm.Details.Select(d => new FeedMixDetailDto
+                {
+                    ItemId = d.ItemId,
+                    ItemName = d.Item.Name,
+                    Quantity = d.Quantity
+                }).ToList()
+            }).ToList();
+
+            return Ok(new
+            {
+                TotalCount = totalCount,
+                FeedMixes = result
+            });
+        }
 
 
         // POST: api/feedmix

@@ -19,11 +19,17 @@ namespace FarmManagement.API.Controllers
 
         // ================= GET ALL =================
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<BarnDto>>> GetBarns()
+        public async Task<ActionResult> GetBarns(int SkipCount = 0, int MaxResultCount = 7)  // افتراضي 7
         {
-            var barns = await _context.Barns
+            var query = _context.Barns
                 .Include(b => b.Farm)
-                .OrderByDescending(b => b.Id)
+                .OrderByDescending(b => b.Id);
+
+            var totalCount = await query.CountAsync();
+
+            var barns = await query
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
                 .Select(b => new BarnDto
                 {
                     Id = b.Id,
@@ -35,7 +41,11 @@ namespace FarmManagement.API.Controllers
                 })
                 .ToListAsync();
 
-            return barns;
+            return Ok(new
+            {
+                TotalCount = totalCount,
+                Barns = barns
+            });
         }
 
         // ================= GET BY ID =================

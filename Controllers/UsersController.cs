@@ -67,11 +67,20 @@ public async Task<IActionResult> Login(LoginDto dto)
     });
 }
 
-  // GET: api/users
+        // GET: api/users
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<UserResponseDto>>> GetUsers()
+        public async Task<ActionResult> GetUsers(
+          int SkipCount = 0,
+          int MaxResultCount = 7)
         {
-            var users = await _context.AppUsers
+            var query = _context.AppUsers.AsQueryable();
+
+            var totalCount = await query.CountAsync();
+
+            var users = await query
+                .OrderByDescending(u => u.Id)
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
                 .Select(u => new UserResponseDto
                 {
                     Id = u.Id,
@@ -80,7 +89,11 @@ public async Task<IActionResult> Login(LoginDto dto)
                 })
                 .ToListAsync();
 
-            return Ok(users);
+            return Ok(new
+            {
+                TotalCount = totalCount,
+                Users = users
+            });
         }
 
         // GET: api/users/1

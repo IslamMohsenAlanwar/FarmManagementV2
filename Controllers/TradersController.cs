@@ -17,31 +17,41 @@ namespace FarmManagement.API.Controllers
             _context = context;
         }
 
-        // ================= GET ALL (With Optional Type Filter) =================
-[HttpGet]
-public async Task<ActionResult<IEnumerable<TraderDto>>> GetTraders([FromQuery] TraderType? type)
-{
-    var query = _context.Traders.AsQueryable();
-
-    if (type.HasValue)
-        query = query.Where(t => t.Type == type.Value);
-
-    var result = await query
-        .OrderByDescending(t => t.Id) 
-        .Select(t => new TraderDto
+        // ================= GET ALL (With Optional Type Filter) ================
+        [HttpGet]
+        public async Task<ActionResult> GetTraders(
+    [FromQuery] TraderType? type,
+    int SkipCount = 0,
+    int MaxResultCount = 7)
         {
-            Id = t.Id,
-            Name = t.Name,
-            Mobile = t.Mobile,
-            Type = t.Type,
-            TypeName = t.Type.ToString(),
-            Balance = t.Balance
-        })
-        .ToListAsync();
+            var query = _context.Traders.AsQueryable();
 
-    return Ok(result);
-}
+            if (type.HasValue)
+                query = query.Where(t => t.Type == type.Value);
 
+            var totalCount = await query.CountAsync();
+
+            var traders = await query
+                .OrderByDescending(t => t.Id)
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
+                .Select(t => new TraderDto
+                {
+                    Id = t.Id,
+                    Name = t.Name,
+                    Mobile = t.Mobile,
+                    Type = t.Type,
+                    TypeName = t.Type.ToString(),
+                    Balance = t.Balance
+                })
+                .ToListAsync();
+
+            return Ok(new
+            {
+                TotalCount = totalCount,
+                Traders = traders
+            });
+        }
 
         // ================= GET BY ID =================
         [HttpGet("{id}")]
@@ -195,17 +205,28 @@ public async Task<ActionResult> PayTrader([FromBody] PayTraderDto dto)
     }
 }
 
+        [HttpGet("trader/{traderId}/ledger")]
+        public async Task<ActionResult> GetTraderLedger(
+    int traderId,
+    int SkipCount = 0,
+    int MaxResultCount = 7)
+        {
+            var query = _context.TraderLedgers
+                .Where(l => l.TraderId == traderId)
+                .OrderByDescending(l => l.Id);
 
+            var totalCount = await query.CountAsync();
 
-[HttpGet("trader/{traderId}/ledger")]
-public async Task<ActionResult> GetTraderLedger(int traderId)
-{
-    var ledger = await _context.TraderLedgers
-        .Where(l => l.TraderId == traderId)
-        .OrderByDescending(l => l.Id)
-        .ToListAsync();
+            var ledger = await query
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
+                .ToListAsync();
 
-    return Ok(ledger);
-}
+            return Ok(new
+            {
+                TotalCount = totalCount,
+                Ledger = ledger
+            });
+        }
     }
 }

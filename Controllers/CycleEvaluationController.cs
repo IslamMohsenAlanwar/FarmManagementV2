@@ -54,15 +54,29 @@ namespace FarmManagement.API.Controllers
 
         // ================= جلب جميع تقييمات الدورة =================
         [HttpGet("{cycleId}")]
-        public async Task<ActionResult<List<CycleEvaluation>>> GetEvaluations(int cycleId)
+        public async Task<ActionResult> GetEvaluations(
+            int cycleId,
+            int SkipCount = 0,
+            int MaxResultCount = 7)  // القيمة الافتراضية 7
         {
-            var evaluations = await _context.CycleEvaluations
+            var query = _context.CycleEvaluations
                 .Where(e => e.CycleId == cycleId)
                 .Include(e => e.Details)
-                .ThenInclude(d => d.EvaluationItem)
+                    .ThenInclude(d => d.EvaluationItem)
+                .OrderBy(e => e.Id); // ترتيب تصاعدي حسب Id أو حسب ما تحتاج
+
+            var totalCount = await query.CountAsync();
+
+            var evaluations = await query
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
                 .ToListAsync();
 
-            return Ok(evaluations);
+            return Ok(new
+            {
+                TotalCount = totalCount,
+                Evaluations = evaluations
+            });
         }
 
         // ================= حساب التقييم النهائي للدورة =================

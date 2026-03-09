@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using FarmManagement.API.Data;
 using FarmManagement.API.Models;
@@ -188,8 +188,12 @@ namespace FarmManagement.API.Controllers
         }
 
         // ================== Get TransactionsHistory==================
+
         [HttpGet("transactions/{farmId}")]
-        public async Task<IActionResult> GetTransactions(int farmId)
+        public async Task<IActionResult> GetTransactions(
+    int farmId,
+    int SkipCount = 0,
+    int MaxResultCount = 7)   // القيمة الافتراضية 7
         {
             var warehouse = await _context.AssetWarehouses
                 .Include(w => w.Farm)
@@ -197,16 +201,22 @@ namespace FarmManagement.API.Controllers
 
             if (warehouse == null) return NotFound("Asset warehouse not found.");
 
-            // ===== Get From DB =====
-            var transactionsList = await _context.AssetTransactions
+            // ===== Query مع Pagination =====
+            var query = _context.AssetTransactions
                 .Include(t => t.AssetWarehouseItem)
                     .ThenInclude(i => i.AssetItem)
                 .Include(t => t.TargetBarn)
                 .Where(t => t.AssetWarehouseItem.AssetWarehouseId == warehouse.Id)
-                .OrderByDescending(t => t.Id)
+                .OrderByDescending(t => t.Id);
+
+            var totalCount = await query.CountAsync();
+
+            var transactionsList = await query
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
                 .ToListAsync();
 
-            // =====  DTO =====
+            // ===== DTO =====
             var transactions = transactionsList.Select(t => new AssetTransactionResponseDto
             {
                 Id = t.Id,
@@ -227,7 +237,11 @@ namespace FarmManagement.API.Controllers
                 Date = t.Date
             });
 
-            return Ok(transactions);
+            return Ok(new
+            {
+                TotalCount = totalCount,
+                Transactions = transactions
+            });
         }
     }
 }

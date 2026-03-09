@@ -18,24 +18,35 @@ namespace FarmManagement.API.Controllers
         }
 
         // ================= GET ALL =================
-      [HttpGet]
-public async Task<ActionResult<IEnumerable<FarmDto>>> GetFarms()
-{
-    var farms = await _context.Farms
-        .Include(f => f.Barns)
-        .OrderByDescending(f => f.Id)  
-        .Select(f => new FarmDto
+        [HttpGet]
+        public async Task<ActionResult> GetFarms(
+    int SkipCount = 0,
+    int MaxResultCount = 7)
         {
-            Id = f.Id,
-            Name = f.Name,
-            Description = f.Description,
-            BarnNames = f.Barns.Select(b => b.Name).ToList()
-        })
-        .ToListAsync();
+            var query = _context.Farms
+                .Include(f => f.Barns)
+                .OrderByDescending(f => f.Id);
 
-    return farms;
-}
+            var totalCount = await query.CountAsync();
 
+            var farms = await query
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
+                .Select(f => new FarmDto
+                {
+                    Id = f.Id,
+                    Name = f.Name,
+                    Description = f.Description,
+                    BarnNames = f.Barns.Select(b => b.Name).ToList()
+                })
+                .ToListAsync();
+
+            return Ok(new
+            {
+                TotalCount = totalCount,
+                Farms = farms
+            });
+        }
 
         // ================= GET BY ID =================
         [HttpGet("{id}")]

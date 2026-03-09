@@ -19,10 +19,18 @@ namespace FarmManagement.API.Controllers
 
         // ================= GET ALL =================
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ItemDto>>> GetItems()
+        public async Task<ActionResult> GetItems(
+    int SkipCount = 0,
+    int MaxResultCount = 7) 
         {
-            var items = await _context.Items
-            .OrderByDescending(i => i.Id)
+            var query = _context.Items
+                .OrderByDescending(i => i.Id);
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
                 .Select(i => new ItemDto
                 {
                     Id = i.Id,
@@ -32,7 +40,11 @@ namespace FarmManagement.API.Controllers
                 })
                 .ToListAsync();
 
-            return items;
+            return Ok(new
+            {
+                TotalCount = totalCount,
+                Items = items
+            });
         }
 
         // ================= GET BY ID =================

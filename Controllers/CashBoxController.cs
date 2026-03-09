@@ -19,13 +19,23 @@ namespace FarmManagement.API.Controllers
 
         //  عرض كل الحركات (الجديد فوق)
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll(int SkipCount = 0, int MaxResultCount = 7) // القيمة الافتراضية 7
         {
-            var transactions = await _context.CashBoxTransactions
-                .OrderByDescending(t => t.Id)
+            var query = _context.CashBoxTransactions
+                .OrderByDescending(t => t.Id);
+
+            var totalCount = await query.CountAsync();
+
+            var transactions = await query
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
                 .ToListAsync();
 
-            return Ok(transactions);
+            return Ok(new
+            {
+                TotalCount = totalCount,
+                Transactions = transactions
+            });
         }
 
         //  تقرير الخزنة

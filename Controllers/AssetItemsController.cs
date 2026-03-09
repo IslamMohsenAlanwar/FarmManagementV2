@@ -15,17 +15,26 @@ namespace FarmManagement.API.Controllers
 
         // ================= GET =================
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<AssetItemDto>>> GetAll()
+        public async Task<ActionResult> GetAll(int SkipCount = 0, int MaxResultCount = 7)
         {
+            var totalCount = await _context.AssetItems.CountAsync();
+
             var items = await _context.AssetItems
                 .OrderByDescending(a => a.Id)
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
                 .Select(a => new AssetItemDto
                 {
                     Id = a.Id,
                     Name = a.Name
-                }).ToListAsync();
+                })
+                .ToListAsync();
 
-            return Ok(items);
+            return Ok(new
+            {
+                TotalCount = totalCount,
+                Items = items
+            });
         }
 
         // ================= POST =================

@@ -247,32 +247,42 @@ public async Task<ActionResult> DeleteTransaction(int id)
         return BadRequest("فشل حذف الحركة");
     }
 }
-
-    
-       
-[HttpGet("{warehouseId}/items")]
-public async Task<ActionResult<IEnumerable<WarehouseItemDto>>> GetWarehouseItems(int warehouseId)
-{
-    var items = await _context.WarehouseItems
-        .Include(wi => wi.Item)
-        .Include(wi => wi.Warehouse)
-        .Where(wi => wi.WarehouseId == warehouseId && wi.Item.ItemType != ItemType.Egg)
-        .OrderByDescending(wi => wi.Id)
-        .Select(wi => new WarehouseItemDto
+        [HttpGet("{warehouseId}/items")]
+        public async Task<ActionResult> GetWarehouseItems(
+    int warehouseId,
+    [FromQuery] int SkipCount = 0,
+    [FromQuery] int MaxResultCount = 7) 
         {
-            Id = wi.Id,
-            WarehouseId = wi.WarehouseId,
-            WarehouseName = wi.Warehouse.Name,
-            ItemId = wi.ItemId,
-            ItemName = wi.Item.Name,
-            Quantity = wi.Quantity,
-            PricePerUnit = wi.PricePerUnit,
-            Withdrawn = wi.Withdrawn,
-            EggQuality = null
-        })
-        .ToListAsync();
+            var query = _context.WarehouseItems
+                .Include(wi => wi.Item)
+                .Include(wi => wi.Warehouse)
+                .Where(wi => wi.WarehouseId == warehouseId && wi.Item.ItemType != ItemType.Egg);
 
-    return Ok(items);
-}
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .OrderByDescending(wi => wi.Id)
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
+                .Select(wi => new WarehouseItemDto
+                {
+                    Id = wi.Id,
+                    WarehouseId = wi.WarehouseId,
+                    WarehouseName = wi.Warehouse.Name,
+                    ItemId = wi.ItemId,
+                    ItemName = wi.Item.Name,
+                    Quantity = wi.Quantity,
+                    PricePerUnit = wi.PricePerUnit,
+                    Withdrawn = wi.Withdrawn,
+                    EggQuality = null
+                })
+                .ToListAsync();
+
+            return Ok(new
+            {
+                TotalCount = totalCount,
+                Items = items
+            });
+        }
     }
 }

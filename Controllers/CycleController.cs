@@ -22,19 +22,25 @@ namespace FarmManagement.API.Controllers
 
         // ================= GET ALL =================
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<CycleDto>>> GetCycles()
+        public async Task<ActionResult> GetCycles(int SkipCount = 0, int MaxResultCount = 7) // القيمة الافتراضية 7
         {
-            var cycles = await _context.Cycles
+            var query = _context.Cycles
                 .Include(c => c.Farm)
                 .Include(c => c.Barn)
                 .Include(c => c.BarnManager)
                 .Include(c => c.BarnWorker)
                 .Include(c => c.Evaluations)
-                .ThenInclude(e => e.Details)
-                .OrderByDescending(c => c.Id)
+                    .ThenInclude(e => e.Details)
+                .OrderByDescending(c => c.Id);
+
+            var totalCount = await query.CountAsync();
+
+            var cyclesList = await query
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
                 .ToListAsync();
 
-            var result = cycles.Select(c => new CycleDto
+            var result = cyclesList.Select(c => new CycleDto
             {
                 Id = c.Id,
                 Name = c.Name,
@@ -54,10 +60,14 @@ namespace FarmManagement.API.Controllers
                 ChickCount = c.ChickCount,
                 ChickAge = c.ChickAge,
 
-                FinalScore = _evaluationService.CalculateFinalScore(c) // 👈 هنا
+                FinalScore = _evaluationService.CalculateFinalScore(c)
             }).ToList();
 
-            return Ok(result);
+            return Ok(new
+            {
+                TotalCount = totalCount,
+                Cycles = result
+            });
         }
 
         // ================= GET BY ID =================

@@ -18,9 +18,19 @@ namespace FarmManagement.API.Controllers
 
         // GET: api/FeedTypes
         [HttpGet]
-        public async Task<ActionResult> GetFeedTypes()
+        [HttpGet]
+        public async Task<ActionResult> GetFeedTypes(
+    int SkipCount = 0,
+    int MaxResultCount = 7) 
         {
-            var types = await _context.FeedTypes
+            var query = _context.FeedTypes
+                .OrderBy(t => t.Id); 
+
+            var totalCount = await query.CountAsync();
+
+            var types = await query
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
                 .Select(t => new
                 {
                     t.Id,
@@ -28,7 +38,11 @@ namespace FarmManagement.API.Controllers
                 })
                 .ToListAsync();
 
-            return Ok(types);
+            return Ok(new
+            {
+                TotalCount = totalCount,
+                FeedTypes = types
+            });
         }
     }
 }

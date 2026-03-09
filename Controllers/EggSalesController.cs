@@ -142,33 +142,45 @@ namespace FarmManagement.API.Controllers
             });
         }
 
-// ================= GET: List Sales =================
-[HttpGet]
-public async Task<ActionResult<IEnumerable<EggSaleResponseDto>>> GetSales()
-{
-    var sales = await _context.EggSales
-        .Include(s => s.Trader)
-        .Include(s => s.Warehouse)
-        .Include(s => s.WarehouseTransactions)
-        .OrderByDescending(s => s.Id)
-        .ToListAsync();
+        // ================= GET: List Sales =================
+        [HttpGet]
+        public async Task<ActionResult> GetSales(
+            int SkipCount = 0,
+            int MaxResultCount = 7)  // القيمة الافتراضية 7
+        {
+            var query = _context.EggSales
+                .Include(s => s.Trader)
+                .Include(s => s.Warehouse)
+                .Include(s => s.WarehouseTransactions)
+                .OrderByDescending(s => s.Id);
 
-    var result = sales.Select(s => new EggSaleResponseDto
-    {
-        Id = s.Id,
-        TraderName = s.Trader != null ? s.Trader.Name : "غير معروف",
-        WarehouseName = s.Warehouse != null ? s.Warehouse.Name : "غير معروف",
-        Date = s.Date,
-        Quantity = s.Quantity,
-        UnitPrice = s.UnitPrice,
-        TotalPrice = s.TotalPrice,
-        PaidAmount = s.PaidAmount,
-        RemainingAmount = s.RemainingAmount,
-        CumulativeBalance = s.Trader != null ? s.Trader.Balance : 0,
-        EggQuality = s.WarehouseTransactions.FirstOrDefault()?.EggQuality.ToArabic()
-    });
+            var totalCount = await query.CountAsync();
 
-    return Ok(result);
-}
+            var salesList = await query
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
+                .ToListAsync();
+
+            var result = salesList.Select(s => new EggSaleResponseDto
+            {
+                Id = s.Id,
+                TraderName = s.Trader != null ? s.Trader.Name : "غير معروف",
+                WarehouseName = s.Warehouse != null ? s.Warehouse.Name : "غير معروف",
+                Date = s.Date,
+                Quantity = s.Quantity,
+                UnitPrice = s.UnitPrice,
+                TotalPrice = s.TotalPrice,
+                PaidAmount = s.PaidAmount,
+                RemainingAmount = s.RemainingAmount,
+                CumulativeBalance = s.Trader != null ? s.Trader.Balance : 0,
+                EggQuality = s.WarehouseTransactions.FirstOrDefault()?.EggQuality.ToArabic()
+            }).ToList();
+
+            return Ok(new
+            {
+                TotalCount = totalCount,
+                Sales = result
+            });
+        }
     }
 }
