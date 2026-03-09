@@ -17,16 +17,13 @@ namespace FarmManagement.API.Controllers
             _context = context;
         }
 
+        // ================== Items ==================
         [HttpGet("feed-mixes")]
         public async Task<ActionResult<IEnumerable<LookupDto>>> GetFeedMixes()
         {
             var mixes = await _context.Items
                 .Where(i => i.ItemType == ItemType.FeedMix)
-                .Select(i => new LookupDto
-                {
-                    Id = i.Id,
-                    Name = i.Name
-                })
+                .Select(i => new LookupDto { Id = i.Id, Name = i.Name })
                 .ToListAsync();
 
             return Ok(mixes);
@@ -37,11 +34,7 @@ namespace FarmManagement.API.Controllers
         {
             var medicines = await _context.Items
                 .Where(i => i.ItemType == ItemType.Medicine)
-                .Select(i => new LookupDto
-                {
-                    Id = i.Id,
-                    Name = i.Name
-                })
+                .Select(i => new LookupDto { Id = i.Id, Name = i.Name })
                 .ToListAsync();
 
             return Ok(medicines);
@@ -51,13 +44,8 @@ namespace FarmManagement.API.Controllers
         public async Task<ActionResult<IEnumerable<LookupDto>>> GetStoreItems()
         {
             var items = await _context.Items
-                .Where(i => i.ItemType == ItemType.RawMaterial
-                         || i.ItemType == ItemType.Medicine)
-                .Select(i => new LookupDto
-                {
-                    Id = i.Id,
-                    Name = i.Name
-                })
+                .Where(i => i.ItemType == ItemType.RawMaterial || i.ItemType == ItemType.Medicine)
+                .Select(i => new LookupDto { Id = i.Id, Name = i.Name })
                 .ToListAsync();
 
             return Ok(items);
@@ -68,16 +56,13 @@ namespace FarmManagement.API.Controllers
         {
             var eggs = await _context.Items
                 .Where(i => i.ItemType == ItemType.Egg)
-                .Select(i => new LookupDto
-                {
-                    Id = i.Id,
-                    Name = i.Name
-                })
+                .Select(i => new LookupDto { Id = i.Id, Name = i.Name })
                 .ToListAsync();
 
             return Ok(eggs);
         }
-        // ================= GET: Active Cycle =================
+
+        // ================== Active Cycles ==================
         [HttpGet("active-cycles/{farmId}")]
         public async Task<ActionResult<IEnumerable<ActiveCycleDto>>> GetActiveCycles(int farmId)
         {
@@ -98,12 +83,12 @@ namespace FarmManagement.API.Controllers
                 BarnName = c.Barn.Name
             }).ToList();
 
-            return result;
+            return Ok(result);
         }
 
-        // ================= GET: Barn Lookup =================
+        // ================== Barns Lookup ==================
         [HttpGet("barns/{farmId}")]
-        public async Task<ActionResult<IEnumerable<BarnLookupDto>>> GetBarnsByFarm(int farmId)
+        public async Task<ActionResult<IEnumerable<BarnLookupDto>>> GetBarnsLookup(int farmId)
         {
             var barns = await _context.Barns
                 .Where(b => b.FarmId == farmId)
@@ -116,10 +101,10 @@ namespace FarmManagement.API.Controllers
                 Name = b.Name
             }).ToList();
 
-            return result;
+            return Ok(result);
         }
 
-        // ================= GET Suppliers =================
+        // ================== Traders ==================
         [HttpGet("suppliers")]
         public async Task<ActionResult<IEnumerable<TraderDto>>> GetSuppliers()
         {
@@ -140,7 +125,6 @@ namespace FarmManagement.API.Controllers
             return Ok(suppliers);
         }
 
-        // ================= GET Buyers =================
         [HttpGet("buyers")]
         public async Task<ActionResult<IEnumerable<TraderDto>>> GetBuyers()
         {
@@ -161,29 +145,27 @@ namespace FarmManagement.API.Controllers
             return Ok(buyers);
         }
 
-
+        // ================== Upcoming Cycles ==================
         [HttpGet("upcoming-cycles")]
         public async Task<ActionResult<IEnumerable<LookupDto>>> GetUpcomingCycles()
         {
             var today = DateTime.Today;
 
             var cycles = await _context.Cycles
-                .Where(c => c.EndDate >= today) // الدورات اللي لسه ما انتهتش
+                .Where(c => c.EndDate >= today)
                 .OrderBy(c => c.EndDate)
                 .Select(c => new LookupDto
                 {
                     Id = c.Id,
-                    Name = c.Name // ✅ هنا نستخدم اسم الدورة الحقيقي
+                    Name = c.Name
                 })
                 .ToListAsync();
 
             return Ok(cycles);
         }
-        // =======================
-        // Warehouse Lookup By Farm
-        // =======================
 
-        [HttpGet("lookup/by-farm/{farmId}")]
+        // ================== Warehouse Lookup ==================
+        [HttpGet("warehouse/by-farm/{farmId}")]
         public async Task<ActionResult<WarehouseDto>> GetWarehouseByFarm(int farmId)
         {
             var warehouse = await _context.Warehouses
@@ -204,6 +186,7 @@ namespace FarmManagement.API.Controllers
             return Ok(warehouse);
         }
 
+        // ================== Farms Lookup ==================
         [HttpGet("farms")]
         public async Task<ActionResult<IEnumerable<LookupDto>>> GetFarmsLookup()
         {
@@ -219,52 +202,28 @@ namespace FarmManagement.API.Controllers
             return Ok(farms);
         }
 
+        // ================== Evaluation Items ==================
         [HttpGet("evaluation-items")]
         public async Task<ActionResult<IEnumerable<LookupDto>>> GetEvaluationItems()
         {
             var items = await _context.EvaluationItems
                 .OrderBy(e => e.Name)
-                .Select(e => new LookupDto
-                {
-                    Id = e.Id,
-                    Name = e.Name
-                })
+                .Select(e => new LookupDto { Id = e.Id, Name = e.Name })
                 .ToListAsync();
 
             return Ok(items);
         }
 
+        // ================== Asset Items ==================
         [HttpGet("asset-items")]
         public async Task<ActionResult<IEnumerable<LookupDto>>> GetAssetItems()
         {
             var items = await _context.AssetItems
                 .OrderBy(a => a.Name)
-                .Select(a => new LookupDto
-                {
-                    Id = a.Id,
-                    Name = a.Name
-                })
+                .Select(a => new LookupDto { Id = a.Id, Name = a.Name })
                 .ToListAsync();
 
             return Ok(items);
         }
-
-        [HttpGet("barns")]
-        public async Task<ActionResult<IEnumerable<LookupDto>>> GetBarnsByFarm(int farmId)
-        {
-            var barns = await _context.Barns
-                .Where(b => b.FarmId == farmId)
-                .OrderBy(b => b.Name)
-                .Select(b => new LookupDto
-                {
-                    Id = b.Id,
-                    Name = b.Name
-                })
-                .ToListAsync();
-
-            return Ok(barns);
-        }
-
     }
-
 }
