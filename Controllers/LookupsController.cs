@@ -6,88 +6,88 @@ using FarmManagement.API.DTOs;
 
 namespace FarmManagement.API.Controllers
 {
-   [ApiController]
-[Route("api/lookups")]
-public class LookupsController : ControllerBase
-{
-    private readonly FarmDbContext _context;
-
-    public LookupsController(FarmDbContext context)
+    [ApiController]
+    [Route("api/lookups")]
+    public class LookupsController : ControllerBase
     {
-        _context = context;
-    }
+        private readonly FarmDbContext _context;
 
-    [HttpGet("feed-mixes")]
-    public async Task<ActionResult<IEnumerable<LookupDto>>> GetFeedMixes()
-    {
-        var mixes = await _context.Items
-            .Where(i => i.ItemType == ItemType.FeedMix)
-            .Select(i => new LookupDto
-            {
-                Id = i.Id,
-                Name = i.Name
-            })
-            .ToListAsync();
+        public LookupsController(FarmDbContext context)
+        {
+            _context = context;
+        }
 
-        return Ok(mixes);
-    }
+        [HttpGet("feed-mixes")]
+        public async Task<ActionResult<IEnumerable<LookupDto>>> GetFeedMixes()
+        {
+            var mixes = await _context.Items
+                .Where(i => i.ItemType == ItemType.FeedMix)
+                .Select(i => new LookupDto
+                {
+                    Id = i.Id,
+                    Name = i.Name
+                })
+                .ToListAsync();
 
-    [HttpGet("medicines")]
-    public async Task<ActionResult<IEnumerable<LookupDto>>> GetMedicines()
-    {
-        var medicines = await _context.Items
-            .Where(i => i.ItemType == ItemType.Medicine)
-            .Select(i => new LookupDto
-            {
-                Id = i.Id,
-                Name = i.Name
-            })
-            .ToListAsync();
+            return Ok(mixes);
+        }
 
-        return Ok(medicines);
-    }
+        [HttpGet("medicines")]
+        public async Task<ActionResult<IEnumerable<LookupDto>>> GetMedicines()
+        {
+            var medicines = await _context.Items
+                .Where(i => i.ItemType == ItemType.Medicine)
+                .Select(i => new LookupDto
+                {
+                    Id = i.Id,
+                    Name = i.Name
+                })
+                .ToListAsync();
 
-    [HttpGet("store-items")]
-    public async Task<ActionResult<IEnumerable<LookupDto>>> GetStoreItems()
-    {
-        var items = await _context.Items
-            .Where(i => i.ItemType == ItemType.RawMaterial 
-                     || i.ItemType == ItemType.Medicine)
-            .Select(i => new LookupDto
-            {
-                Id = i.Id,
-                Name = i.Name
-            })
-            .ToListAsync();
+            return Ok(medicines);
+        }
 
-        return Ok(items);
-    }
+        [HttpGet("store-items")]
+        public async Task<ActionResult<IEnumerable<LookupDto>>> GetStoreItems()
+        {
+            var items = await _context.Items
+                .Where(i => i.ItemType == ItemType.RawMaterial
+                         || i.ItemType == ItemType.Medicine)
+                .Select(i => new LookupDto
+                {
+                    Id = i.Id,
+                    Name = i.Name
+                })
+                .ToListAsync();
 
-    [HttpGet("eggs")]
-    public async Task<ActionResult<IEnumerable<LookupDto>>> GetEggItems()
-    {
-        var eggs = await _context.Items
-            .Where(i => i.ItemType == ItemType.Egg)
-            .Select(i => new LookupDto
-            {
-                Id = i.Id,
-                Name = i.Name
-            })
-            .ToListAsync();
+            return Ok(items);
+        }
 
-        return Ok(eggs);
-    }
+        [HttpGet("eggs")]
+        public async Task<ActionResult<IEnumerable<LookupDto>>> GetEggItems()
+        {
+            var eggs = await _context.Items
+                .Where(i => i.ItemType == ItemType.Egg)
+                .Select(i => new LookupDto
+                {
+                    Id = i.Id,
+                    Name = i.Name
+                })
+                .ToListAsync();
+
+            return Ok(eggs);
+        }
         // ================= GET: Active Cycle =================
         [HttpGet("active-cycles/{farmId}")]
         public async Task<ActionResult<IEnumerable<ActiveCycleDto>>> GetActiveCycles(int farmId)
         {
-            var today = DateTime.Now.Date; 
+            var today = DateTime.Now.Date;
 
             var activeCycles = await _context.Cycles
-                .Include(c => c.Barn)          
+                .Include(c => c.Barn)
                 .Where(c => c.FarmId == farmId &&
                             c.StartDate.Date <= today &&
-                            c.EndDate.Date >= today) 
+                            c.EndDate.Date >= today)
                 .OrderBy(c => c.StartDate)
                 .ToListAsync();
 
@@ -103,84 +103,168 @@ public class LookupsController : ControllerBase
 
         // ================= GET: Barn Lookup =================
         [HttpGet("barns/{farmId}")]
-public async Task<ActionResult<IEnumerable<BarnLookupDto>>> GetBarnsByFarm(int farmId)
-{
-    var barns = await _context.Barns
-        .Where(b => b.FarmId == farmId)
-        .OrderBy(b => b.Name)
-        .ToListAsync();
-
-    var result = barns.Select(b => new BarnLookupDto
-    {
-        Id = b.Id,
-        Name = b.Name
-    }).ToList();
-
-    return result;
-}
-
-// ================= GET Suppliers =================
-[HttpGet("suppliers")]
-public async Task<ActionResult<IEnumerable<TraderDto>>> GetSuppliers()
-{
-    var suppliers = await _context.Traders
-        .Where(t => t.Type == TraderType.مورد) 
-        .OrderBy(t => t.Name)
-        .Select(t => new TraderDto
+        public async Task<ActionResult<IEnumerable<BarnLookupDto>>> GetBarnsByFarm(int farmId)
         {
-            Id = t.Id,
-            Name = t.Name,
-            Mobile = t.Mobile,
-            Type = t.Type,
-            TypeName = t.Type.ToString(),
-            Balance = t.Balance
-        })
-        .ToListAsync();
+            var barns = await _context.Barns
+                .Where(b => b.FarmId == farmId)
+                .OrderBy(b => b.Name)
+                .ToListAsync();
 
-    return Ok(suppliers);
-}
+            var result = barns.Select(b => new BarnLookupDto
+            {
+                Id = b.Id,
+                Name = b.Name
+            }).ToList();
 
-// ================= GET Buyers =================
-[HttpGet("buyers")]
-public async Task<ActionResult<IEnumerable<TraderDto>>> GetBuyers()
-{
-    var buyers = await _context.Traders
-        .Where(t => t.Type == TraderType.عميل) 
-        .OrderBy(t => t.Name)
-        .Select(t => new TraderDto
+            return result;
+        }
+
+        // ================= GET Suppliers =================
+        [HttpGet("suppliers")]
+        public async Task<ActionResult<IEnumerable<TraderDto>>> GetSuppliers()
         {
-            Id = t.Id,
-            Name = t.Name,
-            Mobile = t.Mobile,
-            Type = t.Type,
-            TypeName = t.Type.ToString(),
-            Balance = t.Balance
-        })
-        .ToListAsync();
+            var suppliers = await _context.Traders
+                .Where(t => t.Type == TraderType.مورد)
+                .OrderBy(t => t.Name)
+                .Select(t => new TraderDto
+                {
+                    Id = t.Id,
+                    Name = t.Name,
+                    Mobile = t.Mobile,
+                    Type = t.Type,
+                    TypeName = t.Type.ToString(),
+                    Balance = t.Balance
+                })
+                .ToListAsync();
 
-    return Ok(buyers);
-}
+            return Ok(suppliers);
+        }
 
-
-[HttpGet("upcoming-cycles")]
-public async Task<ActionResult<IEnumerable<LookupDto>>> GetUpcomingCycles()
-{
-    var today = DateTime.Today;
-
-    var cycles = await _context.Cycles
-        .Where(c => c.EndDate >= today) // الدورات اللي لسه ما انتهتش
-        .OrderBy(c => c.EndDate)
-        .Select(c => new LookupDto
+        // ================= GET Buyers =================
+        [HttpGet("buyers")]
+        public async Task<ActionResult<IEnumerable<TraderDto>>> GetBuyers()
         {
-            Id = c.Id,
-            Name = c.Name // ✅ هنا نستخدم اسم الدورة الحقيقي
-        })
-        .ToListAsync();
+            var buyers = await _context.Traders
+                .Where(t => t.Type == TraderType.عميل)
+                .OrderBy(t => t.Name)
+                .Select(t => new TraderDto
+                {
+                    Id = t.Id,
+                    Name = t.Name,
+                    Mobile = t.Mobile,
+                    Type = t.Type,
+                    TypeName = t.Type.ToString(),
+                    Balance = t.Balance
+                })
+                .ToListAsync();
 
-    return Ok(cycles);
-}
+            return Ok(buyers);
+        }
 
 
-}
+        [HttpGet("upcoming-cycles")]
+        public async Task<ActionResult<IEnumerable<LookupDto>>> GetUpcomingCycles()
+        {
+            var today = DateTime.Today;
+
+            var cycles = await _context.Cycles
+                .Where(c => c.EndDate >= today) // الدورات اللي لسه ما انتهتش
+                .OrderBy(c => c.EndDate)
+                .Select(c => new LookupDto
+                {
+                    Id = c.Id,
+                    Name = c.Name // ✅ هنا نستخدم اسم الدورة الحقيقي
+                })
+                .ToListAsync();
+
+            return Ok(cycles);
+        }
+        // =======================
+        // Warehouse Lookup By Farm
+        // =======================
+
+        [HttpGet("lookup/by-farm/{farmId}")]
+        public async Task<ActionResult<WarehouseDto>> GetWarehouseByFarm(int farmId)
+        {
+            var warehouse = await _context.Warehouses
+                .Include(w => w.Farm)
+                .Where(w => w.FarmId == farmId)
+                .Select(w => new WarehouseDto
+                {
+                    Id = w.Id,
+                    Name = w.Name,
+                    FarmId = w.FarmId,
+                    FarmName = w.Farm.Name
+                })
+                .FirstOrDefaultAsync();
+
+            if (warehouse == null)
+                return NotFound("لا يوجد مخزن لهذه المزرعة");
+
+            return Ok(warehouse);
+        }
+
+        [HttpGet("farms")]
+        public async Task<ActionResult<IEnumerable<LookupDto>>> GetFarmsLookup()
+        {
+            var farms = await _context.Farms
+                .OrderBy(f => f.Name)
+                .Select(f => new LookupDto
+                {
+                    Id = f.Id,
+                    Name = f.Name
+                })
+                .ToListAsync();
+
+            return Ok(farms);
+        }
+
+        [HttpGet("evaluation-items")]
+        public async Task<ActionResult<IEnumerable<LookupDto>>> GetEvaluationItems()
+        {
+            var items = await _context.EvaluationItems
+                .OrderBy(e => e.Name)
+                .Select(e => new LookupDto
+                {
+                    Id = e.Id,
+                    Name = e.Name
+                })
+                .ToListAsync();
+
+            return Ok(items);
+        }
+
+        [HttpGet("asset-items")]
+        public async Task<ActionResult<IEnumerable<LookupDto>>> GetAssetItems()
+        {
+            var items = await _context.AssetItems
+                .OrderBy(a => a.Name)
+                .Select(a => new LookupDto
+                {
+                    Id = a.Id,
+                    Name = a.Name
+                })
+                .ToListAsync();
+
+            return Ok(items);
+        }
+
+        [HttpGet("barns")]
+        public async Task<ActionResult<IEnumerable<LookupDto>>> GetBarnsByFarm(int farmId)
+        {
+            var barns = await _context.Barns
+                .Where(b => b.FarmId == farmId)
+                .OrderBy(b => b.Name)
+                .Select(b => new LookupDto
+                {
+                    Id = b.Id,
+                    Name = b.Name
+                })
+                .ToListAsync();
+
+            return Ok(barns);
+        }
+
+    }
 
 }
