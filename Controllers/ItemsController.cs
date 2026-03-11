@@ -18,6 +18,7 @@ namespace FarmManagement.API.Controllers
         }
 
         // ================= GET ALL =================[HttpGet]
+        [HttpGet]
         public async Task<ActionResult> GetItems(
             int? itemType = null,
             int SkipCount = 0,
