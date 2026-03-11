@@ -17,14 +17,21 @@ namespace FarmManagement.API.Controllers
             _context = context;
         }
 
-        // ================= GET ALL =================
-        [HttpGet]
+        // ================= GET ALL =================[HttpGet]
         public async Task<ActionResult> GetItems(
-    int SkipCount = 0,
-    int MaxResultCount = 7) 
+            int? itemType = null,
+            int SkipCount = 0,
+            int MaxResultCount = 7)
         {
-            var query = _context.Items
-                .OrderByDescending(i => i.Id);
+            var query = _context.Items.AsQueryable();
+
+            if (itemType.HasValue)
+            {
+                var type = (ItemType)itemType.Value;
+                query = query.Where(i => i.ItemType == type);
+            }
+
+            query = query.OrderByDescending(i => i.Id);
 
             var totalCount = await query.CountAsync();
 
