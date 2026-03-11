@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FarmManagement.API.Migrations
 {
     [DbContext(typeof(FarmDbContext))]
-    [Migration("20260308111158_InitialCreate")]
+    [Migration("20260311081427_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />

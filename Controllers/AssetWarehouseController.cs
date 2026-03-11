@@ -42,37 +42,50 @@ namespace FarmManagement.API.Controllers
         }
 
         // ================== Get Warehouse ==================
+
         [HttpGet("{farmId}")]
-        public async Task<ActionResult<AssetWarehouseDto>> GetWarehouse(int farmId)
+        public async Task<ActionResult> GetWarehouse(
+            int farmId,
+            int skip = 0,
+            int take = 7)
         {
             var warehouse = await _context.AssetWarehouses
-                .Include(w => w.Items)
-                    .ThenInclude(i => i.AssetItem)
                 .Include(w => w.Farm)
                 .FirstOrDefaultAsync(w => w.FarmId == farmId);
 
-            if (warehouse == null) return NotFound("Asset warehouse not found.");
+            if (warehouse == null)
+                return NotFound("Asset warehouse not found.");
 
-            var dto = new AssetWarehouseDto
-            {
-                Id = warehouse.Id,
-                FarmId = warehouse.FarmId,
-                FarmName = warehouse.Farm?.Name ?? "",
-                Name = warehouse.Name,
-                Items = warehouse.Items
-                .OrderByDescending(i => i.Id)
+            var query = _context.AssetWarehouseItems
+                .Include(i => i.AssetItem)
+                .Where(i => i.AssetWarehouseId == warehouse.Id)
+                .OrderByDescending(i => i.Id);
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .Skip(skip)
+                .Take(take)
                 .Select(i => new AssetWarehouseItemDto
                 {
                     Id = i.Id,
                     AssetItemId = i.AssetItemId,
-                    AssetItemName = i.AssetItem?.Name ?? "",
+                    AssetItemName = i.AssetItem!.Name,
                     Quantity = i.Quantity,
                     InBarnsQuantity = i.InBarnsQuantity,
-                    UnitPrice = i.UnitPrice,
-                }).ToList()
-            };
+                    UnitPrice = i.UnitPrice
+                })
+                .ToListAsync();
 
-            return Ok(dto);
+            return Ok(new
+            {
+                warehouse.Id,
+                warehouse.FarmId,
+                FarmName = warehouse.Farm!.Name,
+                warehouse.Name,
+                TotalCount = totalCount,
+                Items = items
+            });
         }
 
         // ==================Post AddAssetToWarehouse==================
