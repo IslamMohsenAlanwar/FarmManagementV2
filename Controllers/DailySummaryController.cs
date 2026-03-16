@@ -17,20 +17,17 @@ namespace FarmManagement.API.Controllers
             _context = context;
         }
 
-        // ================= GET Daily Summary with Pagination =================
         [HttpGet]
         public async Task<ActionResult<object>> GetDailySummary(
             DateTime? startDate,
             DateTime? endDate,
             int? cycleId,
             int skipCount = 0,
-            int maxResultCount = 7) // افتراضي 7
+            int maxResultCount = 7)
         {
-            // تحديد بداية ونهاية اليوم
             var fromDate = startDate?.Date ?? DateTime.Today.AddDays(-7);
             var toDate = (endDate?.Date ?? DateTime.Today).AddDays(1).AddTicks(-1);
 
-            // جلب الدورات ضمن الفترة المطلوبة
             var cyclesQuery = _context.Cycles
                 .Where(c => c.StartDate <= toDate && c.EndDate >= fromDate);
 
@@ -41,13 +38,13 @@ namespace FarmManagement.API.Controllers
                 .Select(c => new { c.Id, c.Name })
                 .ToListAsync();
 
-            // جلب السجلات ضمن الفترة
             var dailyRecords = await _context.DailyRecords
                 .Where(d => d.Date >= fromDate && d.Date <= toDate)
                 .Include(d => d.FeedConsumptions)
                 .ToListAsync();
 
             var eggProductions = await _context.EggProductionRecords
+                .Include(e => e.Details)
                 .Where(e => e.Date >= fromDate && e.Date <= toDate)
                 .ToListAsync();
 
@@ -55,7 +52,6 @@ namespace FarmManagement.API.Controllers
                 .Where(s => s.Date >= fromDate && s.Date <= toDate)
                 .ToListAsync();
 
-            // تجميع الملخص
             var summaryList = new List<DailySummaryDto>();
 
             for (var date = fromDate.Date; date <= toDate.Date; date = date.AddDays(1))
@@ -67,6 +63,25 @@ namespace FarmManagement.API.Controllers
 
                     var eggProduction = eggProductions
                         .FirstOrDefault(e => e.CycleId == cycle.Id && e.Date.Date == date);
+
+                    int eggsGood = 0;
+                    int eggsBroken = 0;
+                    int eggsDouble = 0;
+
+                    if (eggProduction != null)
+                    {
+                        eggsGood = eggProduction.Details
+                            .Where(d => d.EggQuality == EggQualityType.Normal)
+                            .Sum(d => d.CartonsCount);
+
+                        eggsBroken = eggProduction.Details
+                            .Where(d => d.EggQuality == EggQualityType.Broken)
+                            .Sum(d => d.CartonsCount);
+
+                        eggsDouble = eggProduction.Details
+                            .Where(d => d.EggQuality == EggQualityType.Double)
+                            .Sum(d => d.CartonsCount);
+                    }
 
                     var eggsSold = eggSales
                         .Where(s => s.Date.Date == date)
@@ -80,22 +95,20 @@ namespace FarmManagement.API.Controllers
                         ChickAge = dailyRecord?.ChickAge ?? 0,
                         DeadCount = dailyRecord?.DeadCount ?? 0,
                         FeedConsumed = (int)(dailyRecord?.FeedConsumptions.Sum(f => f.Quantity) ?? 0),
-                        EggsGood = eggProduction?.TotalEggs ?? 0,
-                        EggsBroken = 0,
-                        EggsDouble = 0,
-                        EggsTotal = eggProduction?.TotalEggs ?? 0,
+                        EggsGood = eggsGood,
+                        EggsBroken = eggsBroken,
+                        EggsDouble = eggsDouble,
+                        EggsTotal = eggsGood + eggsBroken + eggsDouble,
                         EggsSold = eggsSold
                     });
                 }
             }
 
-            // ترتيب السجلات
             var orderedList = summaryList
                 .OrderByDescending(s => s.Date)
                 .ThenBy(s => s.CycleName)
                 .ToList();
 
-            // تطبيق البجنيشن
             var pagedItems = orderedList
                 .Skip(skipCount)
                 .Take(maxResultCount)
@@ -109,7 +122,6 @@ namespace FarmManagement.API.Controllers
             });
         }
 
-        // ================= DELETE All Data =================
         [HttpDelete("delete-all")]
         public async Task<ActionResult> DeleteAllDailyData()
         {

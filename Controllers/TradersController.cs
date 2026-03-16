@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using FarmManagement.API.Helpers;
 using Microsoft.EntityFrameworkCore;
 using FarmManagement.API.Data;
 using FarmManagement.API.Models;
@@ -227,6 +228,117 @@ public async Task<ActionResult> PayTrader([FromBody] PayTraderDto dto)
                 TotalCount = totalCount,
                 Ledger = ledger
             });
+        }
+
+
+    [HttpGet("supplier/{traderId}/invoices")]
+     public async Task<ActionResult<SupplierInvoiceReportDto>> GetSupplierInvoices(
+    int traderId,
+    int SkipCount = 0,
+    int MaxResultCount = 10)
+        {
+            var trader = await _context.Traders.FindAsync(traderId);
+            if (trader == null || trader.Type != TraderType.مورد)
+                return BadRequest("هذا التاجر ليس مورد.");
+
+            // جلب الحركات من المخزن مع تفاصيل الأصناف
+            var transactionsQuery = _context.WarehouseTransactions
+                .Include(t => t.Item)
+                .Include(t => t.Warehouse)
+                .Where(t => t.TraderId == traderId && t.TransactionType == "Purchase")
+                .OrderByDescending(t => t.Date);
+
+            var transactions = await transactionsQuery
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
+                .ToListAsync();
+
+            // تجميع الأصناف حسب الفاتورة (TransactionId)
+            var invoices = transactions
+                .GroupBy(t => t.Id)
+                .Select(g => new SupplierInvoiceDto
+                {
+                    TransactionId = g.Key,
+                    Date = g.First().Date,
+                    WarehouseName = g.First().Warehouse.Name,
+                    PaidAmount = g.Sum(x => x.PaidAmount),
+                    Items = g.Select(x => new SupplierInvoiceItemDto
+                    {
+                        ItemName = x.Item.Name,
+                        Quantity = x.Quantity,
+                        PricePerUnit = x.PricePerTon
+                    }).ToList()
+                })
+                .ToList();
+
+            // جلب الرصيد التراكمي
+            var lastLedger = await _context.TraderLedgers
+                .Where(l => l.TraderId == traderId)
+                .OrderByDescending(l => l.Id)
+                .FirstOrDefaultAsync();
+
+            var report = new SupplierInvoiceReportDto
+            {
+                TraderName = trader.Name,
+                CurrentBalance = lastLedger?.Balance ?? 0,
+                Invoices = invoices
+            };
+
+            return Ok(report);
+        }
+
+        [HttpGet("customer/{traderId}/invoices")]
+        public async Task<ActionResult<CustomerInvoiceReportDto>> GetCustomerInvoices(
+            int traderId,
+            int SkipCount = 0,
+            int MaxResultCount = 10)
+        {
+            var trader = await _context.Traders.FindAsync(traderId);
+            if (trader == null || trader.Type != TraderType.عميل)
+                return BadRequest("هذا التاجر ليس عميلاً.");
+
+            // جلب عمليات بيع البيض للعميل مع تفاصيل المخزن
+            var salesQuery = _context.EggSales
+                .Include(s => s.Warehouse)
+                .Include(s => s.WarehouseTransactions)
+                .ThenInclude(wt => wt.Item)
+                .Where(s => s.TraderId == traderId)
+                .OrderByDescending(s => s.Date);
+
+            var sales = await salesQuery
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
+                .ToListAsync();
+
+            var invoices = sales.Select(s => new CustomerInvoiceDto
+            {
+                SaleId = s.Id,
+                Date = s.Date,
+                WarehouseName = s.Warehouse?.Name ?? "غير معروف",
+                Items = s.WarehouseTransactions.Select(wt => new CustomerInvoiceItemDto
+                {
+                    ItemName = wt.Item.Name,
+                    Quantity = wt.Quantity,
+                    UnitPrice = s.UnitPrice,
+                    TotalPrice = s.UnitPrice * wt.Quantity,
+                    EggQuality = wt.EggQuality?.ToArabic() ?? "غير محدد" // سليم / كسر / دبل
+                }).ToList(),
+                TotalAmount = s.TotalPrice,
+                PaidAmount = s.PaidAmount,
+                RemainingAmount = s.RemainingAmount
+            }).ToList();
+
+            // رصيد تراكمي حالي للعميل
+            var currentBalance = trader.Balance;
+
+            var report = new CustomerInvoiceReportDto
+            {
+                TraderName = trader.Name,
+                CurrentBalance = currentBalance,
+                Invoices = invoices
+            };
+
+            return Ok(report);
         }
     }
 }
