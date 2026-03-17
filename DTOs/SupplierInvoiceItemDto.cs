@@ -24,5 +24,6 @@ namespace FarmManagement.API.DTOs
         public string TraderName { get; set; } = "";
         public decimal CurrentBalance { get; set; }
         public List<SupplierInvoiceDto> Invoices { get; set; } = new List<SupplierInvoiceDto>();
+        public int TotalCount { get; set; }
     }
 }

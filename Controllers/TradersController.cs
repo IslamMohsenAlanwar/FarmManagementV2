@@ -289,21 +289,22 @@ public async Task<ActionResult> PayTrader([FromBody] PayTraderDto dto)
 
         [HttpGet("customer/{traderId}/invoices")]
         public async Task<ActionResult<CustomerInvoiceReportDto>> GetCustomerInvoices(
-            int traderId,
-            int SkipCount = 0,
-            int MaxResultCount = 10)
+    int traderId,
+    int SkipCount = 0,
+    int MaxResultCount = 10)
         {
             var trader = await _context.Traders.FindAsync(traderId);
             if (trader == null || trader.Type != TraderType.عميل)
                 return BadRequest("هذا التاجر ليس عميلاً.");
 
-            // جلب عمليات بيع البيض للعميل مع تفاصيل المخزن
             var salesQuery = _context.EggSales
                 .Include(s => s.Warehouse)
                 .Include(s => s.WarehouseTransactions)
                 .ThenInclude(wt => wt.Item)
                 .Where(s => s.TraderId == traderId)
                 .OrderByDescending(s => s.Date);
+
+            var totalCount = await salesQuery.CountAsync();
 
             var sales = await salesQuery
                 .Skip(SkipCount)
@@ -321,21 +322,19 @@ public async Task<ActionResult> PayTrader([FromBody] PayTraderDto dto)
                     Quantity = wt.Quantity,
                     UnitPrice = s.UnitPrice,
                     TotalPrice = s.UnitPrice * wt.Quantity,
-                    EggQuality = wt.EggQuality?.ToArabic() ?? "غير محدد" // سليم / كسر / دبل
+                    EggQuality = wt.EggQuality?.ToArabic() ?? "غير محدد"
                 }).ToList(),
                 TotalAmount = s.TotalPrice,
                 PaidAmount = s.PaidAmount,
                 RemainingAmount = s.RemainingAmount
             }).ToList();
 
-            // رصيد تراكمي حالي للعميل
-            var currentBalance = trader.Balance;
-
             var report = new CustomerInvoiceReportDto
             {
                 TraderName = trader.Name,
-                CurrentBalance = currentBalance,
-                Invoices = invoices
+                CurrentBalance = trader.Balance,
+                Invoices = invoices,
+                TotalCount = totalCount 
             };
 
             return Ok(report);

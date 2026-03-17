@@ -5,6 +5,7 @@
         public string TraderName { get; set; } = string.Empty;
         public decimal CurrentBalance { get; set; }
         public List<CustomerInvoiceDto> Invoices { get; set; } = new List<CustomerInvoiceDto>();
+        public int TotalCount { get; set; }
     }
 
     public class CustomerInvoiceDto
