@@ -225,5 +225,19 @@ namespace FarmManagement.API.Controllers
 
             return Ok(items);
         }
+
+
+        // ================= Breeds =================
+        [HttpGet("Breeds")]
+        public async Task<ActionResult> GetBreedsLookup()
+        {
+            var list = await _context.Breeds
+                .OrderBy(b => b.Name)
+                .Select(b => new { b.Id, b.Name })
+                .ToListAsync();
+
+            return Ok(list);
+        }
+
     }
 }

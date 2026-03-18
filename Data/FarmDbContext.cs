@@ -51,6 +51,10 @@ public DbSet<AppUser> AppUsers { get; set; }
 
 public DbSet<TraderLedger> TraderLedgers { get; set; }
 
+            // ======== New Settings Tables ========
+    public DbSet<Breed> Breeds { get; set; } = null!;
+    public DbSet<TargetMortalitySetting> TargetMortalitySettings { get; set; } = null!;
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -280,6 +284,35 @@ modelBuilder.Entity<CycleEvaluationDetail>(e =>
                  .WithMany()
                  .HasForeignKey(t => t.TargetBarnId)
                  .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<Cycle>()
+                .HasOne(c => c.Breed)
+                .WithMany()
+                .HasForeignKey(c => c.BreedId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+
+            modelBuilder.Entity<Breed>(b =>
+            {
+                b.HasKey(x => x.Id);
+                b.Property(x => x.Name).IsRequired().HasMaxLength(100);
+            });
+
+
+
+            modelBuilder.Entity<TargetMortalitySetting>(t =>
+            {
+                t.HasKey(x => x.Id);
+
+                t.HasOne(x => x.Breed) 
+                 .WithMany()
+                 .HasForeignKey(x => x.BreedId) 
+                 .OnDelete(DeleteBehavior.NoAction);
+
+                t.Property(x => x.WeekStart).IsRequired();
+                t.Property(x => x.WeekEnd).IsRequired();
+                t.Property(x => x.ExpectedMortalityRate).HasPrecision(5, 2);
             });
         }
     }

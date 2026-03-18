@@ -16,11 +16,13 @@ namespace FarmManagement.API.Controllers
         // ================= GET =================
         [HttpGet]
         public async Task<ActionResult> GetDailyRecords(
-       [FromQuery] int? cycleId,
-       [FromQuery] int SkipCount = 0,
-       [FromQuery] int MaxResultCount = 7)  // القيمة الافتراضية 7
+            [FromQuery] int? cycleId,
+            [FromQuery] int SkipCount = 0,
+            [FromQuery] int MaxResultCount = 7)
         {
             var query = _context.DailyRecords
+                        .Include(d => d.Cycle)
+                            .ThenInclude(c => c.Breed) // 👈 التأكد من جلب السلالة
                         .Include(d => d.FeedConsumptions).ThenInclude(f => f.Item)
                         .Include(d => d.MedicineConsumptions).ThenInclude(m => m.Item)
                         .AsQueryable();
@@ -40,6 +42,14 @@ namespace FarmManagement.API.Controllers
             {
                 var egyptDate = TimeZoneHelper.ToEgyptTime(d.Date);
 
+                // 👇 الحصول على نسبة النفوق المستهدف حسب السلالة وأسبوع اليوم
+                var targetMortality = _context.TargetMortalitySettings
+                    .Where(t => t.BreedId == d.Cycle.BreedId && // 👈 استخدم الاسم من الـ navigation
+                                t.WeekStart <= d.DayNumber &&
+                                t.WeekEnd >= d.DayNumber)
+                    .Select(t => t.ExpectedMortalityRate)
+                    .FirstOrDefault(); // 0 لو مفيش إعداد
+
                 return new DailyRecordDto
                 {
                     Id = d.Id,
@@ -51,6 +61,15 @@ namespace FarmManagement.API.Controllers
                     DeadCount = d.DeadCount,
                     DeadCumulative = d.DeadCumulative,
                     RemainingChicks = d.RemainingChicks,
+
+                    // النفوق الفعلي
+                    MortalityRate = d.Cycle.ChickCount == 0
+                        ? 0
+                        : Math.Round((decimal)d.DeadCumulative / d.Cycle.ChickCount * 100, 2),
+
+                    // 👈 الإضافة: النسبة المستهدفة
+                    TargetMortalityRate = targetMortality,
+
                     FeedConsumptions = d.FeedConsumptions.Select(f => new FeedConsumptionDto
                     {
                         ItemId = f.ItemId,
@@ -58,6 +77,7 @@ namespace FarmManagement.API.Controllers
                         Quantity = f.Quantity,
                         Cost = f.Cost
                     }).ToList(),
+
                     MedicineConsumptions = d.MedicineConsumptions.Select(m => new MedicineConsumptionDto
                     {
                         ItemId = m.ItemId,
@@ -79,7 +99,7 @@ namespace FarmManagement.API.Controllers
         [HttpPost]
         public async Task<ActionResult<DailyRecordDto>> CreateDailyRecord(DailyRecordCreateDto dto)
         {
-            // جلب الدورة
+           
             var cycle = await _context.Cycles
                 .Include(c => c.DailyRecords)
                     .ThenInclude(d => d.FeedConsumptions)
@@ -121,11 +141,11 @@ namespace FarmManagement.API.Controllers
                 if (warehouseItem.Quantity < feedDto.Quantity)
                     return BadRequest($"Not enough stock for item {warehouseItem.Item.Name}");
 
-                // خصم الكمية من المخزن
+                
                 warehouseItem.Quantity -= feedDto.Quantity;
                 warehouseItem.Withdrawn += feedDto.Quantity;
 
-                // إضافة الاستهلاك اليومي
+                
                 record.FeedConsumptions.Add(new DailyFeedConsumption
                 {
                     ItemId = feedDto.ItemId,
@@ -174,6 +194,11 @@ namespace FarmManagement.API.Controllers
                 DeadCount = record.DeadCount,
                 DeadCumulative = record.DeadCumulative,
                 RemainingChicks = record.RemainingChicks,
+
+                MortalityRate = cycle.ChickCount == 0
+                    ? 0
+                    : Math.Round((decimal)record.DeadCumulative / cycle.ChickCount * 100, 2),
+
                 FeedConsumptions = record.FeedConsumptions.Select(f => new FeedConsumptionDto
                 {
                     ItemId = f.ItemId,
@@ -181,6 +206,7 @@ namespace FarmManagement.API.Controllers
                     Quantity = f.Quantity,
                     Cost = f.Cost
                 }).ToList(),
+
                 MedicineConsumptions = record.MedicineConsumptions.Select(m => new MedicineConsumptionDto
                 {
                     ItemId = m.ItemId,

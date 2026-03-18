@@ -12,6 +12,8 @@ namespace FarmManagement.API.DTOs
         public int DeadCount { get; set; }
         public int DeadCumulative { get; set; }
         public int RemainingChicks { get; set; }
+        public decimal MortalityRate { get; set; }
+        public decimal TargetMortalityRate { get; set; }
 
         public List<FeedConsumptionDto> FeedConsumptions { get; set; } = new List<FeedConsumptionDto>();
         public List<MedicineConsumptionDto> MedicineConsumptions { get; set; } = new List<MedicineConsumptionDto>();

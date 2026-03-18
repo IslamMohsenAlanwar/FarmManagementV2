@@ -213,6 +213,24 @@ namespace FarmManagement.API.Migrations
                     b.ToTable("Barns");
                 });
 
+            modelBuilder.Entity("FarmManagement.API.Models.Breed", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Breeds");
+                });
+
             modelBuilder.Entity("FarmManagement.API.Models.CashBoxTransaction", b =>
                 {
                     b.Property<int>("Id")
@@ -322,6 +340,9 @@ namespace FarmManagement.API.Migrations
                     b.Property<int?>("BarnWorkerId")
                         .HasColumnType("int");
 
+                    b.Property<int>("BreedId")
+                        .HasColumnType("int");
+
                     b.Property<int>("ChickAge")
                         .HasColumnType("int");
 
@@ -354,6 +375,8 @@ namespace FarmManagement.API.Migrations
                     b.HasIndex("BarnManagerId");
 
                     b.HasIndex("BarnWorkerId");
+
+                    b.HasIndex("BreedId");
 
                     b.HasIndex("FarmId");
 
@@ -811,6 +834,34 @@ namespace FarmManagement.API.Migrations
                     b.ToTable("Salaries");
                 });
 
+            modelBuilder.Entity("FarmManagement.API.Models.TargetMortalitySetting", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BreedId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("ExpectedMortalityRate")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<int>("WeekEnd")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WeekStart")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BreedId");
+
+                    b.ToTable("TargetMortalitySettings");
+                });
+
             modelBuilder.Entity("FarmManagement.API.Models.Trader", b =>
                 {
                     b.Property<int>("Id")
@@ -1186,6 +1237,12 @@ namespace FarmManagement.API.Migrations
                         .HasForeignKey("BarnWorkerId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("FarmManagement.API.Models.Breed", "Breed")
+                        .WithMany()
+                        .HasForeignKey("BreedId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("FarmManagement.API.Models.Farm", "Farm")
                         .WithMany("Cycles")
                         .HasForeignKey("FarmId")
@@ -1197,6 +1254,8 @@ namespace FarmManagement.API.Migrations
                     b.Navigation("BarnManager");
 
                     b.Navigation("BarnWorker");
+
+                    b.Navigation("Breed");
 
                     b.Navigation("Farm");
                 });
@@ -1376,6 +1435,17 @@ namespace FarmManagement.API.Migrations
                         .IsRequired();
 
                     b.Navigation("Worker");
+                });
+
+            modelBuilder.Entity("FarmManagement.API.Models.TargetMortalitySetting", b =>
+                {
+                    b.HasOne("FarmManagement.API.Models.Breed", "Breed")
+                        .WithMany()
+                        .HasForeignKey("BreedId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Breed");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.Vacation", b =>

@@ -115,32 +115,27 @@ namespace FarmManagement.API.Controllers
         [HttpPost]
         public async Task<ActionResult<CycleDto>> CreateCycle(CycleCreateDto dto)
         {
-            var farmExists = await _context.Farms.AnyAsync(f => f.Id == dto.FarmId);
-            var barnExists = await _context.Barns.AnyAsync(b => b.Id == dto.BarnId);
-
-            if (!farmExists) return BadRequest("Farm not found");
-            if (!barnExists) return BadRequest("Barn not found");
+            // التحقق من وجود Farm و Barn
+            if (!await _context.Farms.AnyAsync(f => f.Id == dto.FarmId))
+                return BadRequest("Farm not found");
+            if (!await _context.Barns.AnyAsync(b => b.Id == dto.BarnId))
+                return BadRequest("Barn not found");
 
             // تحقق من صلاحية BarnManager
-            if (dto.BarnManagerId.HasValue)
-            {
-                var managerValid = await _context.Workers
-                    .AnyAsync(u => u.Id == dto.BarnManagerId && u.Role == WorkerRole.BarnManager);
-
-                if (!managerValid)
-                    return BadRequest("Invalid Barn Manager");
-            }
+            if (dto.BarnManagerId.HasValue &&
+                !await _context.Workers.AnyAsync(u => u.Id == dto.BarnManagerId && u.Role == WorkerRole.BarnManager))
+                return BadRequest("Invalid Barn Manager");
 
             // تحقق من صلاحية BarnWorker
-            if (dto.BarnWorkerId.HasValue)
-            {
-                var workerValid = await _context.Workers
-                    .AnyAsync(u => u.Id == dto.BarnWorkerId && u.Role == WorkerRole.BarnWorker);
+            if (dto.BarnWorkerId.HasValue &&
+                !await _context.Workers.AnyAsync(u => u.Id == dto.BarnWorkerId && u.Role == WorkerRole.BarnWorker))
+                return BadRequest("Invalid Barn Worker");
 
-                if (!workerValid)
-                    return BadRequest("Invalid Barn Worker");
-            }
+            // ✅ تحقق من وجود Breed
+            if (!await _context.Breeds.AnyAsync(b => b.Id == dto.BreedId))
+                return BadRequest("Breed not found");
 
+            // إنشاء الدورة
             var cycle = new Cycle
             {
                 Name = dto.Name,
@@ -151,20 +146,22 @@ namespace FarmManagement.API.Controllers
                 StartDate = dto.StartDate,
                 EndDate = dto.EndDate,
                 ChickCount = dto.ChickCount,
-                ChickAge = dto.ChickAge
+                ChickAge = dto.ChickAge,
+                BreedId = dto.BreedId // ربط السلالة هنا
             };
 
             _context.Cycles.Add(cycle);
             await _context.SaveChangesAsync();
 
-            // إرجاع DTO مع FinalScore محسوب (صفر لأنه لسة مفيش تقييمات)
+            // إرجاع الـ DTO
             var createdCycle = await _context.Cycles
                 .Include(c => c.Farm)
                 .Include(c => c.Barn)
                 .Include(c => c.BarnManager)
                 .Include(c => c.BarnWorker)
+                .Include(c => c.Breed) // جلب اسم السلالة
                 .Include(c => c.Evaluations)
-                .ThenInclude(e => e.Details)
+                    .ThenInclude(e => e.Details)
                 .FirstOrDefaultAsync(c => c.Id == cycle.Id);
 
             var dtoResult = new CycleDto
@@ -183,6 +180,8 @@ namespace FarmManagement.API.Controllers
                 EndDate = createdCycle.EndDate,
                 ChickCount = createdCycle.ChickCount,
                 ChickAge = createdCycle.ChickAge,
+                BreedId = createdCycle.BreedId,            // إضافة BreedId
+                BreedName = createdCycle.Breed.Name,       // إضافة اسم السلالة
                 FinalScore = _evaluationService.CalculateFinalScore(createdCycle)
             };
 

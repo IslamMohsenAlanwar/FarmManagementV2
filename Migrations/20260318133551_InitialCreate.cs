@@ -40,6 +40,19 @@ namespace FarmManagement.API.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Breeds",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Breeds", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "EvaluationItems",
                 columns: table => new
                 {
@@ -144,6 +157,27 @@ namespace FarmManagement.API.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Workers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TargetMortalitySettings",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    BreedId = table.Column<int>(type: "int", nullable: false),
+                    WeekStart = table.Column<int>(type: "int", nullable: false),
+                    WeekEnd = table.Column<int>(type: "int", nullable: false),
+                    ExpectedMortalityRate = table.Column<decimal>(type: "decimal(5,2)", precision: 5, scale: 2, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TargetMortalitySettings", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_TargetMortalitySettings_Breeds_BreedId",
+                        column: x => x.BreedId,
+                        principalTable: "Breeds",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -375,7 +409,8 @@ namespace FarmManagement.API.Migrations
                     ChickCount = table.Column<int>(type: "int", nullable: false),
                     ChickAge = table.Column<int>(type: "int", nullable: false),
                     TotalMortality = table.Column<int>(type: "int", nullable: false),
-                    TotalCulled = table.Column<int>(type: "int", nullable: false)
+                    TotalCulled = table.Column<int>(type: "int", nullable: false),
+                    BreedId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -386,6 +421,12 @@ namespace FarmManagement.API.Migrations
                         principalTable: "Barns",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Cycles_Breeds_BreedId",
+                        column: x => x.BreedId,
+                        principalTable: "Breeds",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_Cycles_Farms_FarmId",
                         column: x => x.FarmId,
@@ -883,6 +924,11 @@ namespace FarmManagement.API.Migrations
                 column: "BarnWorkerId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Cycles_BreedId",
+                table: "Cycles",
+                column: "BreedId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Cycles_FarmId",
                 table: "Cycles",
                 column: "FarmId");
@@ -963,6 +1009,11 @@ namespace FarmManagement.API.Migrations
                 column: "WorkerId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_TargetMortalitySettings_BreedId",
+                table: "TargetMortalitySettings",
+                column: "BreedId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Vacations_WorkerId",
                 table: "Vacations",
                 column: "WorkerId");
@@ -1041,6 +1092,9 @@ namespace FarmManagement.API.Migrations
                 name: "Salaries");
 
             migrationBuilder.DropTable(
+                name: "TargetMortalitySettings");
+
+            migrationBuilder.DropTable(
                 name: "TraderLedgers");
 
             migrationBuilder.DropTable(
@@ -1096,6 +1150,9 @@ namespace FarmManagement.API.Migrations
 
             migrationBuilder.DropTable(
                 name: "Barns");
+
+            migrationBuilder.DropTable(
+                name: "Breeds");
 
             migrationBuilder.DropTable(
                 name: "Workers");

@@ -15,5 +15,8 @@ namespace FarmManagement.API.DTOs
 
 public int? BarnManagerId { get; set; }
 public int? BarnWorkerId { get; set; }
+
+        public int BreedId { get; set; }
+
     }
 }

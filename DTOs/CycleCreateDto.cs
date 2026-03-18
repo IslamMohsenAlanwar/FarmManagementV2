@@ -15,5 +15,8 @@ public class CycleCreateDto
 
     public int ChickCount { get; set; }
     public int ChickAge { get; set; }
-}
+
+    public int BreedId { get; set; }
+
+    }
 }
