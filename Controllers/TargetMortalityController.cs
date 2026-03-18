@@ -15,12 +15,22 @@ namespace FarmManagement.API.Controllers
         public TargetMortalityController(FarmDbContext context) => _context = context;
 
         // ================= GET  =================
+
         [HttpGet("GetWeeksByBreed")]
-        public async Task<ActionResult<List<TargetMortalityWeekDto>>> GetWeeksByBreed([FromQuery] int breedId)
+        public async Task<ActionResult> GetWeeksByBreed(
+    [FromQuery] int breedId,
+    int SkipCount = 0,
+    int MaxResultCount = 7)
         {
-            var list = await _context.TargetMortalitySettings
+            var query = _context.TargetMortalitySettings
                 .Where(t => t.BreedId == breedId)
-                .OrderBy(t => t.WeekStart)
+                .OrderBy(t => t.WeekStart);
+
+            var totalCount = await query.CountAsync();
+
+            var list = await query
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
                 .Select(t => new TargetMortalityWeekDto
                 {
                     WeekStart = t.WeekStart,
@@ -29,9 +39,12 @@ namespace FarmManagement.API.Controllers
                 })
                 .ToListAsync();
 
-            return Ok(list);
+            return Ok(new
+            {
+                totalCount,
+                items = list
+            });
         }
-
         // ================= POST لإضافة مستهدف نافق =================
         [HttpPost("AddMultiple")]
         public async Task<ActionResult> AddMultiple([FromBody] TargetMortalityInputDto dto)
