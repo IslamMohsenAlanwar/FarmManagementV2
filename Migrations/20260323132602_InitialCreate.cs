@@ -160,6 +160,28 @@ namespace FarmManagement.API.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "FeedConsumptionSettings",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    BreedId = table.Column<int>(type: "int", nullable: false),
+                    WeekStart = table.Column<int>(type: "int", nullable: false),
+                    WeekEnd = table.Column<int>(type: "int", nullable: false),
+                    TargetPerBirdGram = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FeedConsumptionSettings", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_FeedConsumptionSettings_Breeds_BreedId",
+                        column: x => x.BreedId,
+                        principalTable: "Breeds",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "TargetMortalitySettings",
                 columns: table => new
                 {
@@ -989,6 +1011,11 @@ namespace FarmManagement.API.Migrations
                 column: "WarehouseId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_FeedConsumptionSettings_BreedId",
+                table: "FeedConsumptionSettings",
+                column: "BreedId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_FeedMixDetails_FeedMixId",
                 table: "FeedMixDetails",
                 column: "FeedMixId");
@@ -1084,6 +1111,9 @@ namespace FarmManagement.API.Migrations
 
             migrationBuilder.DropTable(
                 name: "EggProductionDetail");
+
+            migrationBuilder.DropTable(
+                name: "FeedConsumptionSettings");
 
             migrationBuilder.DropTable(
                 name: "FeedMixDetails");

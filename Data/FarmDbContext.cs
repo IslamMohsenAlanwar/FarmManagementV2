@@ -55,6 +55,10 @@ public DbSet<TraderLedger> TraderLedgers { get; set; }
     public DbSet<Breed> Breeds { get; set; } = null!;
     public DbSet<TargetMortalitySetting> TargetMortalitySettings { get; set; } = null!;
 
+
+
+    public DbSet<FeedConsumptionSetting> FeedConsumptionSettings { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

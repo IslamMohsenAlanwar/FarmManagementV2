@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FarmManagement.API.Migrations
 {
     [DbContext(typeof(FarmDbContext))]
-    [Migration("20260318133551_InitialCreate")]
+    [Migration("20260323132602_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -20,7 +20,7 @@ namespace FarmManagement.API.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "7.0.7")
+                .HasAnnotation("ProductVersion", "9.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -694,6 +694,34 @@ namespace FarmManagement.API.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Farms");
+                });
+
+            modelBuilder.Entity("FarmManagement.API.Models.FeedConsumptionSetting", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BreedId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("TargetPerBirdGram")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("WeekEnd")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WeekStart")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BreedId");
+
+                    b.ToTable("FeedConsumptionSettings");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.FeedMix", b =>
@@ -1397,6 +1425,17 @@ namespace FarmManagement.API.Migrations
                     b.Navigation("Trader");
 
                     b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("FarmManagement.API.Models.FeedConsumptionSetting", b =>
+                {
+                    b.HasOne("FarmManagement.API.Models.Breed", "Breed")
+                        .WithMany()
+                        .HasForeignKey("BreedId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Breed");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.FeedMix", b =>

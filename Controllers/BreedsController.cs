@@ -17,7 +17,7 @@ namespace FarmManagement.API.Controllers
         [HttpGet]
         public async Task<ActionResult> GetBreeds(int SkipCount = 0, int MaxResultCount = 7)
         {
-            var query = _context.Breeds.OrderBy(b => b.Id);
+            var query = _context.Breeds.OrderByDescending(b => b.Id);
             var totalCount = await query.CountAsync();
             var list = await query.Skip(SkipCount).Take(MaxResultCount).ToListAsync();
             return Ok(new

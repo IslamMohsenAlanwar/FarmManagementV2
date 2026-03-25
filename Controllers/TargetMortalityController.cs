@@ -24,7 +24,7 @@ namespace FarmManagement.API.Controllers
         {
             var query = _context.TargetMortalitySettings
                 .Where(t => t.BreedId == breedId)
-                .OrderBy(t => t.WeekStart);
+                .OrderByDescending(t => t.Id);
 
             var totalCount = await query.CountAsync();
 
