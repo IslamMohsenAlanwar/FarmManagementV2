@@ -50,6 +50,30 @@ public async Task<IActionResult> CreateBatch(FeedConsumptionBatchDto dto)
         return Ok(data);
     } 
 
+//     [HttpGet("by-breed/{breedId}")]
+// public async Task<IActionResult> GetByBreed(
+//     int breedId,
+//     int SkipCount = 0,
+//     int MaxResultCount = 10)
+// {
+//     var query = _context.FeedConsumptionSettings
+//         .Where(x => x.BreedId == breedId)
+//         .OrderByDescending(x => x.Id);
+
+//     var totalCount = await query.CountAsync();
+
+//     var data = await query
+//         .Skip(SkipCount)
+//         .Take(MaxResultCount)
+//         .ToListAsync();
+
+//     return Ok(new
+//     {
+//         TotalCount = totalCount,
+//         Items = data
+//     });
+// }
+
     [HttpGet("feed-report")]
 public async Task<ActionResult> GetFeedReport(
     [FromQuery] int cycleId,
@@ -70,26 +94,38 @@ public async Task<ActionResult> GetFeedReport(
     decimal cumulativeTargetHouseTon = 0;
     decimal cumulativeActualHouseTon = 0;
 
+    // ✅ نجيب كل الـ settings مرة واحدة (Optimization)
+    var settings = await _context.FeedConsumptionSettings
+        .Where(t => t.BreedId == cycle.BreedId)
+        .ToListAsync();
+
     // الحساب التراكمي تصاعدي
-    foreach (var record in cycle.DailyRecords.OrderBy(d => d.DayNumber))
+    foreach (var record in cycle.DailyRecords.OrderBy(d => d.ChickAge))
     {
-        var targetPerBirdGram = await _context.FeedConsumptionSettings
-            .Where(t => t.BreedId == cycle.BreedId &&
-                        t.WeekStart <= record.DayNumber &&
-                        t.WeekEnd >= record.DayNumber)
-            .Select(t => t.TargetPerBirdGram)
-            .FirstOrDefaultAsync();
+        // ✅ نحول اليوم → أسبوع
+        var weekNumber = (int)Math.Ceiling(record.DayNumber / 7.0);
+
+        // ✅ ندعم range + single week
+        var targetPerBirdGram = settings
+            .FirstOrDefault(s => s.WeekStart <= weekNumber && s.WeekEnd >= weekNumber)
+            ?.TargetPerBirdGram ?? 0;
 
         var actualFeedKg = record.FeedConsumptions.Sum(f => f.Quantity);
 
-        var actualPerBirdGram = record.RemainingChicks == 0 ? 0 : (actualFeedKg * 1000) / record.RemainingChicks;
+        var actualPerBirdGram = record.RemainingChicks == 0
+            ? 0
+            : (actualFeedKg * 1000) / record.RemainingChicks;
 
         cumulativeTargetPerBirdKg += targetPerBirdGram / 1000m;
         cumulativeActualPerBirdKg += actualPerBirdGram / 1000m;
 
-        var achievementPerBird = targetPerBirdGram == 0 ? 0 : (actualPerBirdGram / targetPerBirdGram) * 100;
-        var cumulativeAchievementPerBird = cumulativeTargetPerBirdKg == 0 ? 0 :
-            (cumulativeActualPerBirdKg / cumulativeTargetPerBirdKg) * 100;
+        var achievementPerBird = targetPerBirdGram == 0
+            ? 0
+            : (actualPerBirdGram / targetPerBirdGram) * 100;
+
+        var cumulativeAchievementPerBird = cumulativeTargetPerBirdKg == 0
+            ? 0
+            : (cumulativeActualPerBirdKg / cumulativeTargetPerBirdKg) * 100;
 
         var targetHouseTon = (targetPerBirdGram * record.RemainingChicks) / 1_000_000m;
         var actualHouseTon = actualFeedKg / 1000m;
@@ -97,13 +133,17 @@ public async Task<ActionResult> GetFeedReport(
         cumulativeTargetHouseTon += targetHouseTon;
         cumulativeActualHouseTon += actualHouseTon;
 
-        var achievementHouse = targetHouseTon == 0 ? 0 : (actualHouseTon / targetHouseTon) * 100;
-        var cumulativeAchievementHouse = cumulativeTargetHouseTon == 0 ? 0 :
-            (cumulativeActualHouseTon / cumulativeTargetHouseTon) * 100;
+        var achievementHouse = targetHouseTon == 0
+            ? 0
+            : (actualHouseTon / targetHouseTon) * 100;
+
+        var cumulativeAchievementHouse = cumulativeTargetHouseTon == 0
+            ? 0
+            : (cumulativeActualHouseTon / cumulativeTargetHouseTon) * 100;
 
         report.Add(new FeedReportDto
         {
-            DayNumber = record.DayNumber,
+            ChickAge = record.ChickAge,
             TargetFeedPerBirdGram = targetPerBirdGram,
             ActualFeedPerBirdGram = actualPerBirdGram,
             AchievementPerBirdPercent = Math.Round(achievementPerBird, 2),
@@ -119,18 +159,16 @@ public async Task<ActionResult> GetFeedReport(
         });
     }
 
-    // ترتيب جديد + Pagination
+    // Pagination
     var paginatedItems = report
-        .OrderByDescending(r => r.DayNumber) 
+        .OrderByDescending(r => r.ChickAge)
         .Skip(SkipCount)
         .Take(MaxResultCount)
         .ToList();
 
-    var totalCount = report.Count;
-
     return Ok(new
     {
-        TotalCount = totalCount,
+        TotalCount = report.Count,
         Items = paginatedItems
     });
 }

@@ -2,7 +2,7 @@ namespace FarmManagement.API.DTOs
 {
     public class FeedReportDto
 {
-    public int DayNumber { get; set; }
+    public int ChickAge { get; set; }
 
     // ===== لكل طائر =====
     public decimal TargetFeedPerBirdGram { get; set; }    // استهلاك مستهدف / طائر

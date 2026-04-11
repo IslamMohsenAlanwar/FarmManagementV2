@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FarmManagement.API.Migrations
 {
     [DbContext(typeof(FarmDbContext))]
-    [Migration("20260323132602_InitialCreate")]
+    [Migration("20260406080423_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -603,6 +603,32 @@ namespace FarmManagement.API.Migrations
                     b.HasIndex("FarmId");
 
                     b.ToTable("EggProductionRecords");
+                });
+
+            modelBuilder.Entity("FarmManagement.API.Models.EggProductionSetting", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BreedId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("TargetProductionPercent")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("WeekEnd")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WeekStart")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("EggProductionSettings");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.EggSale", b =>

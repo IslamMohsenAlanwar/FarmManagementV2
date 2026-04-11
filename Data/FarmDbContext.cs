@@ -58,6 +58,7 @@ public DbSet<TraderLedger> TraderLedgers { get; set; }
 
 
     public DbSet<FeedConsumptionSetting> FeedConsumptionSettings { get; set; }
+    public DbSet<EggProductionSetting> EggProductionSettings { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
