@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using FarmManagement.API.DTOs;
 using FarmManagement.API.Data;
 using FarmManagement.API.Models;
+using System.Globalization;
+
 
 namespace FarmManagement.API.Controllers
 {
@@ -64,9 +66,9 @@ namespace FarmManagement.API.Controllers
                     var eggProduction = eggProductions
                         .FirstOrDefault(e => e.CycleId == cycle.Id && e.Date.Date == date);
 
-                    int eggsGood = 0;
-                    int eggsBroken = 0;
-                    int eggsDouble = 0;
+                    decimal eggsGood = 0;
+                    decimal eggsBroken = 0;
+                    decimal eggsDouble = 0;
 
                     if (eggProduction != null)
                     {
@@ -90,7 +92,7 @@ namespace FarmManagement.API.Controllers
                     summaryList.Add(new DailySummaryDto
                     {
                         Date = date,
-                        DayName = date.DayOfWeek.ToString(),
+                        DayName = date.ToString("dddd", new CultureInfo("ar-EG")),
                         CycleName = cycle.Name,
                         ChickAge = dailyRecord?.ChickAge ?? 0,
                         DeadCount = dailyRecord?.DeadCount ?? 0,

@@ -8,10 +8,10 @@ namespace FarmManagement.API.DTOs
         public int ChickAge { get; set; }
 
         // إنتاج البيض
-        public int EggsGood { get; set; }
-        public int EggsBroken { get; set; }
-        public int EggsDouble { get; set; }
-        public int EggsTotal { get; set; }
+        public decimal EggsGood { get; set; }
+        public decimal EggsBroken { get; set; }
+        public decimal EggsDouble { get; set; }
+        public decimal EggsTotal { get; set; }
 
         // النافق والمستهلك
         public int DeadCount { get; set; }

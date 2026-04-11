@@ -7,7 +7,7 @@ namespace FarmManagement.API.DTOs
     {
         public int Id { get; set; }
         public DateTime Date { get; set; }
-        public int TotalEggs { get; set; }
+        public decimal TotalEggs { get; set; }
         public int LiveBirdsCount { get; set; }
         public decimal ProductionRate { get; set; }
         public string? Notes { get; set; }

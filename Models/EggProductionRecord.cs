@@ -20,7 +20,7 @@ namespace FarmManagement.API.Models
 
         public int LiveBirdsCount { get; set; }
 
-        public int TotalEggs { get; set; }
+        public decimal TotalEggs { get; set; }
 
         public decimal ProductionRate { get; set; }
 

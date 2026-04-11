@@ -5,6 +5,6 @@ namespace FarmManagement.API.DTOs
     public class CreateEggProductionDetailDto
     {
         public EggQualityType EggQuality { get; set; }
-        public int CartonsCount { get; set; }
+        public decimal CartonsCount { get; set; }
     }
 }

@@ -7,10 +7,10 @@ namespace FarmManagement.API.DTOs
         public int ChickAge { get; set; }
 
         // ===== عدد الأطباق الفعلية =====
-        public int BrokenCartons { get; set; }
-        public int DoubleCartons { get; set; }
-        public int NormalCartons { get; set; }
-        public int TotalActualCartons { get; set; }
+        public decimal BrokenCartons { get; set; }
+        public decimal DoubleCartons { get; set; }
+        public decimal NormalCartons { get; set; }
+        public decimal TotalActualCartons { get; set; }
 
         // ===== أطباق البيض المستهدفة =====
         public decimal TargetCartons { get; set; }

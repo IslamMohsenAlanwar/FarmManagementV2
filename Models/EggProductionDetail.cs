@@ -9,8 +9,8 @@ namespace FarmManagement.API.Models
 
         public EggQualityType EggQuality { get; set; }
 
-        public int CartonsCount { get; set; }
+        public decimal CartonsCount { get; set; }
 
-        public int TotalEggs { get; set; }
+        public decimal TotalEggs { get; set; }
     }
 }

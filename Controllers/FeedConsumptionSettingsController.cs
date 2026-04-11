@@ -9,172 +9,184 @@ using BCrypt.Net;
 namespace FarmManagement.API.Controllers
 {
     [Route("api/[controller]")]
-[ApiController]
-public class FeedConsumptionSettingsController : ControllerBase
-{
-    private readonly FarmDbContext _context;
-
-    public FeedConsumptionSettingsController(FarmDbContext context)
+    [ApiController]
+    public class FeedConsumptionSettingsController : ControllerBase
     {
-        _context = context;
-    }
+        private readonly FarmDbContext _context;
 
-   [HttpPost]
-public async Task<IActionResult> CreateBatch(FeedConsumptionBatchDto dto)
-{
-    if (dto.Weeks == null || !dto.Weeks.Any())
-        return BadRequest("No weeks provided.");
+        public FeedConsumptionSettingsController(FarmDbContext context)
+        {
+            _context = context;
+        }
 
-    var settings = dto.Weeks.Select(week => new FeedConsumptionSetting
-    {
-        BreedId = dto.BreedId,
-        WeekStart = week.WeekStart,
-        WeekEnd = week.WeekEnd,
-        TargetPerBirdGram = week.TargetPerBirdGram
-    }).ToList();
+        [HttpPost]
+        public async Task<IActionResult> CreateBatch(FeedConsumptionBatchDto dto)
+        {
+            if (dto.Weeks == null || !dto.Weeks.Any())
+                return BadRequest("No weeks provided.");
 
-    _context.FeedConsumptionSettings.AddRange(settings);
-    await _context.SaveChangesAsync();
+            var settings = dto.Weeks.Select(week => new FeedConsumptionSetting
+            {
+                BreedId = dto.BreedId,
+                WeekStart = week.WeekStart,
+                WeekEnd = week.WeekEnd,
+                TargetPerBirdGram = week.TargetPerBirdGram
+            }).ToList();
 
-    return Ok(settings);
-}
+            _context.FeedConsumptionSettings.AddRange(settings);
+            await _context.SaveChangesAsync();
 
-    [HttpGet("by-breed/{breedId}")]
-    public async Task<IActionResult> GetByBreed(int breedId)
-    {
-        var data = await _context.FeedConsumptionSettings
-            .Where(x => x.BreedId == breedId)
-            .OrderByDescending(x => x.Id)
-            .ToListAsync();
+            return Ok(settings);
+        }
 
-        return Ok(data);
-    } 
 
-//     [HttpGet("by-breed/{breedId}")]
-// public async Task<IActionResult> GetByBreed(
-//     int breedId,
-//     int SkipCount = 0,
-//     int MaxResultCount = 10)
-// {
-//     var query = _context.FeedConsumptionSettings
-//         .Where(x => x.BreedId == breedId)
-//         .OrderByDescending(x => x.Id);
+        [HttpGet("by-breed/{breedId}")]
+        public async Task<IActionResult> GetByBreed(
+     int breedId,
+     [FromQuery] int SkipCount = 0,
+     [FromQuery] int MaxResultCount = 7)
+        {
+            var query = _context.FeedConsumptionSettings
+                .Where(x => x.BreedId == breedId);
 
-//     var totalCount = await query.CountAsync();
+            var totalCount = await query.CountAsync();
 
-//     var data = await query
-//         .Skip(SkipCount)
-//         .Take(MaxResultCount)
-//         .ToListAsync();
+            var data = await query
+                .OrderByDescending(x => x.Id)
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
+                .ToListAsync();
 
-//     return Ok(new
-//     {
-//         TotalCount = totalCount,
-//         Items = data
-//     });
-// }
+            return Ok(new
+            {
+                totalCount,
+                SkipCount,
+                MaxResultCount,
+                data
+            });
+        }
 
-    [HttpGet("feed-report")]
-public async Task<ActionResult> GetFeedReport(
+
+        [HttpGet("feed-report")]
+        public async Task<ActionResult> GetFeedReport(
     [FromQuery] int cycleId,
     [FromQuery] int SkipCount = 0,
     [FromQuery] int MaxResultCount = 7)
-{
-    var cycle = await _context.Cycles
-        .Include(c => c.DailyRecords)
-        .ThenInclude(d => d.FeedConsumptions)
-        .FirstOrDefaultAsync(c => c.Id == cycleId);
-
-    if (cycle == null) return BadRequest("Cycle not found.");
-
-    var report = new List<FeedReportDto>();
-
-    decimal cumulativeTargetPerBirdKg = 0;
-    decimal cumulativeActualPerBirdKg = 0;
-    decimal cumulativeTargetHouseTon = 0;
-    decimal cumulativeActualHouseTon = 0;
-
-    // ✅ نجيب كل الـ settings مرة واحدة (Optimization)
-    var settings = await _context.FeedConsumptionSettings
-        .Where(t => t.BreedId == cycle.BreedId)
-        .ToListAsync();
-
-    // الحساب التراكمي تصاعدي
-    foreach (var record in cycle.DailyRecords.OrderBy(d => d.ChickAge))
-    {
-        // ✅ نحول اليوم → أسبوع
-        var weekNumber = (int)Math.Ceiling(record.DayNumber / 7.0);
-
-        // ✅ ندعم range + single week
-        var targetPerBirdGram = settings
-            .FirstOrDefault(s => s.WeekStart <= weekNumber && s.WeekEnd >= weekNumber)
-            ?.TargetPerBirdGram ?? 0;
-
-        var actualFeedKg = record.FeedConsumptions.Sum(f => f.Quantity);
-
-        var actualPerBirdGram = record.RemainingChicks == 0
-            ? 0
-            : (actualFeedKg * 1000) / record.RemainingChicks;
-
-        cumulativeTargetPerBirdKg += targetPerBirdGram / 1000m;
-        cumulativeActualPerBirdKg += actualPerBirdGram / 1000m;
-
-        var achievementPerBird = targetPerBirdGram == 0
-            ? 0
-            : (actualPerBirdGram / targetPerBirdGram) * 100;
-
-        var cumulativeAchievementPerBird = cumulativeTargetPerBirdKg == 0
-            ? 0
-            : (cumulativeActualPerBirdKg / cumulativeTargetPerBirdKg) * 100;
-
-        var targetHouseTon = (targetPerBirdGram * record.RemainingChicks) / 1_000_000m;
-        var actualHouseTon = actualFeedKg / 1000m;
-
-        cumulativeTargetHouseTon += targetHouseTon;
-        cumulativeActualHouseTon += actualHouseTon;
-
-        var achievementHouse = targetHouseTon == 0
-            ? 0
-            : (actualHouseTon / targetHouseTon) * 100;
-
-        var cumulativeAchievementHouse = cumulativeTargetHouseTon == 0
-            ? 0
-            : (cumulativeActualHouseTon / cumulativeTargetHouseTon) * 100;
-
-        report.Add(new FeedReportDto
         {
-            ChickAge = record.ChickAge,
-            TargetFeedPerBirdGram = targetPerBirdGram,
-            ActualFeedPerBirdGram = actualPerBirdGram,
-            AchievementPerBirdPercent = Math.Round(achievementPerBird, 2),
-            CumulativeTargetFeedPerBirdKg = Math.Round(cumulativeTargetPerBirdKg, 2),
-            CumulativeActualFeedPerBirdKg = Math.Round(cumulativeActualPerBirdKg, 2),
-            CumulativeAchievementPerBirdPercent = Math.Round(cumulativeAchievementPerBird, 2),
-            TargetFeedPerHouseTon = Math.Round(targetHouseTon, 2),
-            ActualFeedPerHouseTon = Math.Round(actualHouseTon, 2),
-            AchievementHousePercent = Math.Round(achievementHouse, 2),
-            CumulativeTargetFeedHouseTon = Math.Round(cumulativeTargetHouseTon, 2),
-            CumulativeActualFeedHouseTon = Math.Round(cumulativeActualHouseTon, 2),
-            CumulativeAchievementHousePercent = Math.Round(cumulativeAchievementHouse, 2)
-        });
+            var cycle = await _context.Cycles
+                .Include(c => c.DailyRecords)
+                .ThenInclude(d => d.FeedConsumptions)
+                .FirstOrDefaultAsync(c => c.Id == cycleId);
+
+            if (cycle == null)
+                return BadRequest("Cycle not found.");
+
+            var report = new List<FeedReportDto>();
+
+            // =========================
+            // CUMULATIVE (GRAM BASIS)
+            // =========================
+            decimal cumulativeTargetPerBirdGram = 0;
+            decimal cumulativeActualPerBirdGram = 0;
+
+            decimal cumulativeTargetHouseTon = 0;
+            decimal cumulativeActualHouseTon = 0;
+
+            // settings once
+            var settings = await _context.FeedConsumptionSettings
+                .Where(t => t.BreedId == cycle.BreedId)
+                .ToListAsync();
+
+            foreach (var record in cycle.DailyRecords.OrderBy(d => d.ChickAge))
+            {
+                // week calc
+                var weekNumber = (record.ChickAge / 7) + 1;
+
+                var targetPerBirdGram = settings
+                    .FirstOrDefault(s => s.WeekStart <= weekNumber && s.WeekEnd >= weekNumber)
+                    ?.TargetPerBirdGram ?? 0;
+
+                // =========================
+                // FEED TOTAL (TON)
+                // =========================
+                var actualFeedTon = record.FeedConsumptions.Sum(f => f.Quantity);
+
+                // =========================
+                // PER BIRD (GRAM)
+                // =========================
+                var actualPerBirdGram = record.RemainingChicks == 0
+                    ? 0
+                    : (actualFeedTon * 1_000_000m) / record.RemainingChicks;
+
+                // cumulative (GRAM)
+                cumulativeTargetPerBirdGram += targetPerBirdGram;
+                cumulativeActualPerBirdGram += actualPerBirdGram;
+
+                var achievementPerBird = targetPerBirdGram == 0
+                    ? 0
+                    : (actualPerBirdGram / targetPerBirdGram) * 100;
+
+                var cumulativeAchievementPerBird = cumulativeTargetPerBirdGram == 0
+                    ? 0
+                    : (cumulativeActualPerBirdGram / cumulativeTargetPerBirdGram) * 100;
+
+                // =========================
+                // HOUSE (TON)
+                // =========================
+                var targetHouseTon = (targetPerBirdGram * record.RemainingChicks) / 1_000_000m;
+
+                // FIXED: actualFeedTon already TON
+                var actualHouseTon = actualFeedTon;
+
+                cumulativeTargetHouseTon += targetHouseTon;
+                cumulativeActualHouseTon += actualHouseTon;
+
+                var achievementHouse = targetHouseTon == 0
+                    ? 0
+                    : (actualHouseTon / targetHouseTon) * 100;
+
+                var cumulativeAchievementHouse = cumulativeTargetHouseTon == 0
+                    ? 0
+                    : (cumulativeActualHouseTon / cumulativeTargetHouseTon) * 100;
+
+                report.Add(new FeedReportDto
+                {
+                    ChickAge = record.ChickAge,
+
+                    TargetFeedPerBirdGram = targetPerBirdGram,
+                    ActualFeedPerBirdGram = Math.Round(actualPerBirdGram, 0),
+
+                    AchievementPerBirdPercent = Math.Round(achievementPerBird, 2),
+                    CumulativeTargetFeedPerBirdKg = Math.Round(cumulativeTargetPerBirdGram / 1000m, 3),
+                    CumulativeActualFeedPerBirdKg = Math.Round(cumulativeActualPerBirdGram / 1000m, 3),
+                    CumulativeAchievementPerBirdPercent = Math.Round(cumulativeAchievementPerBird, 2),
+
+                    TargetFeedPerHouseTon = Math.Round(targetHouseTon, 3),
+                    ActualFeedPerHouseTon = Math.Round(actualHouseTon, 3),
+
+                    AchievementHousePercent = Math.Round(achievementHouse, 2),
+                    CumulativeTargetFeedHouseTon = Math.Round(cumulativeTargetHouseTon, 3),
+                    CumulativeActualFeedHouseTon = Math.Round(cumulativeActualHouseTon, 3),
+
+                    CumulativeAchievementHousePercent = Math.Round(cumulativeAchievementHouse, 2)
+                });
+            }
+
+            var paginatedItems = report
+                .OrderByDescending(r => r.ChickAge)
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
+                .ToList();
+
+            return Ok(new
+            {
+                TotalCount = report.Count,
+                Items = paginatedItems
+            });
+        }
+
+
     }
-
-    // Pagination
-    var paginatedItems = report
-        .OrderByDescending(r => r.ChickAge)
-        .Skip(SkipCount)
-        .Take(MaxResultCount)
-        .ToList();
-
-    return Ok(new
-    {
-        TotalCount = report.Count,
-        Items = paginatedItems
-    });
-}
-
-    
-}
 }
 
 

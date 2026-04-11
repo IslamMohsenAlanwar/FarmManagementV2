@@ -73,7 +73,7 @@ public DbSet<TraderLedger> TraderLedgers { get; set; }
                 .Where(p => p.ClrType == typeof(decimal)))
             {
                 property.SetPrecision(18);
-                property.SetScale(2);
+                property.SetScale(6);
             }
 
             // ================= Workers =================

@@ -3,9 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using FarmManagement.API.Data;
 using FarmManagement.API.DTOs;
 using FarmManagement.API.Models;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Collections.Generic;
 
 namespace FarmManagement.API.Controllers
 {
@@ -20,7 +17,7 @@ namespace FarmManagement.API.Controllers
             _context = context;
         }
 
-        // ===== Create Batch with Auto TargetPerBird =====
+        // ================= CREATE BATCH =================
         [HttpPost]
         public async Task<IActionResult> CreateBatch(EggProductionBatchDto dto)
         {
@@ -29,26 +26,51 @@ namespace FarmManagement.API.Controllers
 
             var settings = new List<EggProductionSetting>();
 
+            // ================= Load data once =================
+            var records = await _context.DailyRecords
+                .Where(d => d.Cycle.BreedId == dto.BreedId)
+                .Select(d => new
+                {
+                    d.ChickAge,
+                    d.RemainingChicks
+                })
+                .ToListAsync();
+
             foreach (var w in dto.Weeks)
             {
-                // ===== متوسط عدد الطيور الحية للأسبوع =====
-                var avgLiveBirds = await _context.DailyRecords
-                    .Where(d => d.Cycle.BreedId == dto.BreedId &&
-                                d.ChickAge >= w.WeekStart &&
-                                d.ChickAge <= w.WeekEnd)
-                    .AverageAsync(d => (decimal?)d.RemainingChicks) ?? 0;
+                // ================= Filter by week =================
+                var filtered = records
+                    .Where(d =>
+                    {
+                        var weekNumber = (int)Math.Ceiling(d.ChickAge / 7.0);
+                        return weekNumber >= w.WeekStart && weekNumber <= w.WeekEnd;
+                    })
+                    .ToList();
 
-                // ===== حساب TargetPerBird =====
-                var targetEggs = (w.TargetProductionPercent / 100m) * avgLiveBirds;
-                var targetPerBird = avgLiveBirds == 0 ? 0 : targetEggs / avgLiveBirds;
+                // ================= Safe average =================
+                var avgLiveBirds = filtered.Count > 0
+                    ? filtered.Average(x => (decimal)x.RemainingChicks)
+                    : 0m;
+
+                // fallback لو مفيش بيانات
+                if (avgLiveBirds == 0)
+                {
+                    avgLiveBirds = records.Any()
+                        ? records.Average(x => (decimal)x.RemainingChicks)
+                        : 1m;
+                }
+
+                var targetProductionPercent = (decimal)w.TargetProductionPercent;
+
+                // ================= (Optional calculation only for validation/debug) =================
+                var targetEggs = (targetProductionPercent / 100m) * avgLiveBirds;
 
                 settings.Add(new EggProductionSetting
                 {
                     BreedId = dto.BreedId,
                     WeekStart = w.WeekStart,
                     WeekEnd = w.WeekEnd,
-                    TargetProductionPercent = w.TargetProductionPercent,
-                    TargetPerBird = Math.Round(targetPerBird, 2)
+                    TargetProductionPercent = targetProductionPercent
                 });
             }
 
@@ -58,16 +80,31 @@ namespace FarmManagement.API.Controllers
             return Ok(settings);
         }
 
-        // ===== Get By Breed =====
+        // ================= GET BY BREED =================
         [HttpGet("by-breed/{breedId}")]
-        public async Task<IActionResult> GetByBreed(int breedId)
+        public async Task<IActionResult> GetByBreed(
+     int breedId,
+     [FromQuery] int SkipCount = 0,
+     [FromQuery] int MaxResultCount = 7)
         {
-            var data = await _context.EggProductionSettings
-                .Where(x => x.BreedId == breedId)
-                .OrderByDescending(x => x.Id)
+            var query = _context.EggProductionSettings
+                .Where(x => x.BreedId == breedId);
+
+            var totalCount = await query.CountAsync();
+
+            var data = await query
+                .OrderBy(x => x.WeekStart)
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
                 .ToListAsync();
 
-            return Ok(data);
+            return Ok(new
+            {
+                totalCount,
+                SkipCount,
+                MaxResultCount,
+                data
+            });
         }
     }
 }

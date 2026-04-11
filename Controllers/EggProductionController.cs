@@ -48,7 +48,7 @@ namespace FarmManagement.API.Controllers
                     Notes = dto.Notes
                 };
 
-                int totalEggs = 0;
+                decimal totalEggs = 0;
 
                 foreach (var d in dto.Details)
                 {

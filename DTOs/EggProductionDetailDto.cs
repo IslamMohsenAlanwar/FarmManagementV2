@@ -3,7 +3,7 @@ namespace FarmManagement.API.DTOs
     public class EggProductionDetailDto
     {
         public string EggQuality { get; set; } = string.Empty;
-        public int CartonsCount { get; set; }
-        public int TotalEggs { get; set; }
+        public decimal CartonsCount { get; set; }
+        public decimal TotalEggs { get; set; }
     }
 }

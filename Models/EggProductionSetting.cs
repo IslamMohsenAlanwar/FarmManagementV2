@@ -13,7 +13,5 @@ namespace FarmManagement.API.Models
 
     // متوسط عدد البيض المستهدف للطائر في اليوم
     public decimal TargetProductionPercent { get; set; }
-    public decimal TargetPerBird { get; set; }
-
 }
 }

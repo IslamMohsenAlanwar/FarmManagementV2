@@ -6,8 +6,8 @@ namespace FarmManagement.API.DTOs
     {
         public string BarnName { get; set; } = string.Empty;
         public string EggQuality { get; set; } = string.Empty;
-        public int CartonsCount { get; set; }
-        public int TotalEggs { get; set; }
+        public decimal CartonsCount { get; set; }
+        public decimal TotalEggs { get; set; }
         public string Day { get; set; } = string.Empty;
         public DateTime Date { get; set; }
     }
