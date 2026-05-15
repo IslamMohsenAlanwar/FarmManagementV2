@@ -29,6 +29,7 @@ namespace FarmManagement.API.Controllers
                 .Include(c => c.Barn)
                 .Include(c => c.BarnManager)
                 .Include(c => c.BarnWorker)
+                .Include(c => c.Breed)
                 .Include(c => c.Evaluations)
                     .ThenInclude(e => e.Details)
                 .OrderByDescending(c => c.Id);
@@ -48,9 +49,12 @@ namespace FarmManagement.API.Controllers
                 FarmName = c.Farm.Name,
                 BarnId = c.BarnId,
                 BarnName = c.Barn.Name,
+                BreedId = c.BreedId,
+                BreedName = c.Breed != null ? c.Breed.Name : "",
 
                 BarnManagerId = c.BarnManagerId,
                 BarnManagerName = c.BarnManager?.Name,
+
 
                 BarnWorkerId = c.BarnWorkerId,
                 BarnWorkerName = c.BarnWorker?.Name,
@@ -79,6 +83,7 @@ namespace FarmManagement.API.Controllers
                 .Include(c => c.Barn)
                 .Include(c => c.BarnManager)
                 .Include(c => c.BarnWorker)
+                .Include(c => c.Breed)
                 .Include(c => c.Evaluations)
                 .ThenInclude(e => e.Details)
                 .FirstOrDefaultAsync(c => c.Id == id);
@@ -93,6 +98,8 @@ namespace FarmManagement.API.Controllers
                 FarmName = c.Farm.Name,
                 BarnId = c.BarnId,
                 BarnName = c.Barn.Name,
+                BreedId = c.BreedId,
+                BreedName = c.Breed != null ? c.Breed.Name : "",
 
                 BarnManagerId = c.BarnManagerId,
                 BarnManagerName = c.BarnManager?.Name,
@@ -105,7 +112,7 @@ namespace FarmManagement.API.Controllers
                 ChickCount = c.ChickCount,
                 ChickAge = c.ChickAge,
 
-                FinalScore = _evaluationService.CalculateFinalScore(c) // 👈 هنا كمان
+                FinalScore = _evaluationService.CalculateFinalScore(c)
             };
 
             return Ok(dto);
@@ -131,7 +138,7 @@ namespace FarmManagement.API.Controllers
                 !await _context.Workers.AnyAsync(u => u.Id == dto.BarnWorkerId && u.Role == WorkerRole.BarnWorker))
                 return BadRequest("Invalid Barn Worker");
 
-            // ✅ تحقق من وجود Breed
+            //  تحقق من وجود Breed
             if (!await _context.Breeds.AnyAsync(b => b.Id == dto.BreedId))
                 return BadRequest("Breed not found");
 
@@ -204,6 +211,7 @@ namespace FarmManagement.API.Controllers
             cycle.ChickAge = dto.ChickAge;
             cycle.BarnManagerId = dto.BarnManagerId;
             cycle.BarnWorkerId = dto.BarnWorkerId;
+            cycle.BreedId = dto.BreedId;
 
             await _context.SaveChangesAsync();
             return NoContent();
@@ -214,7 +222,17 @@ namespace FarmManagement.API.Controllers
         public async Task<IActionResult> DeleteCycle(int id)
         {
             var cycle = await _context.Cycles.FindAsync(id);
-            if (cycle == null) return NotFound();
+            if (cycle == null)
+                return NotFound();
+
+            // =========================
+            // التحقق من وجود سجلات يومية
+            // =========================
+            var hasDailyRecords = await _context.DailyRecords
+                .AnyAsync(r => r.CycleId == id);
+
+            if (hasDailyRecords)
+                return BadRequest("لا يمكن حذف الدورة لأنها تحتوي على سجلات يومية.");
 
             _context.Cycles.Remove(cycle);
             await _context.SaveChangesAsync();

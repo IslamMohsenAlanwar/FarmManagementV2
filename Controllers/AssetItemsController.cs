@@ -100,5 +100,61 @@ namespace FarmManagement.API.Controllers
                 Name = item.Name
             });
         }
+
+         // ================= DELETE =================
+[HttpDelete("{id}")]
+public async Task<IActionResult> Delete(
+    int id,
+    [FromQuery] bool forceDelete = false)
+{
+    var item = await _context.AssetItems
+        .FirstOrDefaultAsync(a => a.Id == id);
+
+    if (item == null)
+        return NotFound("Asset item not found.");
+
+    var warehouseItems = await _context.AssetWarehouseItems
+        .Where(w => w.AssetItemId == id)
+        .ToListAsync();
+
+    var warehouseItemIds = warehouseItems
+        .Select(w => w.Id)
+        .ToList();
+
+    var transactions = await _context.AssetTransactions
+        .Where(t => warehouseItemIds.Contains(t.AssetWarehouseItemId))
+        .ToListAsync();
+
+    // 🚨 تحذير قبل المسح
+    if (!forceDelete &&
+        (warehouseItems.Any() || transactions.Any()))
+    {
+        return BadRequest(new
+        {
+            Message = "الأصل عليه حركات ومخزون، هل متأكد من حذفه؟",
+            HasWarehouseItems = warehouseItems.Any(),
+            WarehouseItemsCount = warehouseItems.Count,
+            HasTransactions = transactions.Any(),
+            TransactionsCount = transactions.Count,
+            RequireConfirmation = true
+        });
+    }
+
+    // 1️⃣ امسح الـ Transactions
+    _context.AssetTransactions.RemoveRange(transactions);
+
+    // 2️⃣ امسح الـ WarehouseItems
+    _context.AssetWarehouseItems.RemoveRange(warehouseItems);
+
+    // 3️⃣ امسح الـ AssetItem
+    _context.AssetItems.Remove(item);
+
+    await _context.SaveChangesAsync();
+
+    return Ok(new
+    {
+        Message = "تم حذف الأصل والبيانات ذات الصلة بنجاح."
+    });
+}
     }
 }

@@ -4,6 +4,7 @@ namespace FarmManagement.API.Models
     {
         Normal = 1,   // سليم
         Broken = 2,   // كسر
-        Double = 3    // دبل
+        Double = 3,    // دبل
+        Farza = 4   // فرزه
     }
 }

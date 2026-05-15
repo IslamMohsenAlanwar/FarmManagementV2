@@ -86,7 +86,7 @@ namespace FarmManagement.API.Controllers
                     return BadRequest($"ItemId {dtoItem.ItemId} not found in warehouse.");
 
                 if (warehouseItem.Quantity < dtoItem.Quantity)
-                    return BadRequest($"Not enough stock for ItemId {dtoItem.ItemId}.");
+                    return BadRequest($"لا يوجد مخزون كاف من {warehouseItem.Item.Name}.");
 
                 warehouseItem.Quantity -= dtoItem.Quantity;
                 warehouseItem.Withdrawn += dtoItem.Quantity;
@@ -106,8 +106,10 @@ namespace FarmManagement.API.Controllers
             var feedMix = new FeedMix
             {
                 FeedTypeId = dto.FeedTypeId,
+                WarehouseId = dto.WarehouseId,  // ← ضيف ده
                 TotalWeight = totalWeight,
                 TotalPrice = totalPrice,
+                Quantity = totalWeight,
                 Details = details
             };
             _context.FeedMixes.Add(feedMix);
@@ -125,7 +127,9 @@ namespace FarmManagement.API.Controllers
                 {
                     Name = warehouseItemName,
                     ItemType = ItemType.FeedMix,
-                    PricePerTon = totalPrice / totalWeight
+                    PricePerTon = totalPrice / totalWeight,
+                    FeedTypeId = dto.FeedTypeId
+                    
                 };
                 _context.Items.Add(feedMixItem);
                 await _context.SaveChangesAsync(); 
@@ -166,5 +170,61 @@ namespace FarmManagement.API.Controllers
 
             return Ok(feedMixDto);
         }
+
+
+ [HttpDelete("{id}")]
+public async Task<ActionResult> DeleteFeedMix(int id)
+{
+    var feedMix = await _context.FeedMixes
+        .Include(fm => fm.FeedType)
+        .Include(fm => fm.Details)
+            .ThenInclude(d => d.Item)
+        .FirstOrDefaultAsync(fm => fm.Id == id);
+
+    if (feedMix == null)
+        return NotFound("FeedMix not found.");
+
+    // ✅ check صح
+    if (feedMix.Quantity < feedMix.TotalWeight)
+        return BadRequest("لا يمكن حذف الخلطة لأنه تم استخدام جزء منها.");
+
+    var warehouseItemName = $"{feedMix.FeedType.Name} - خلطة جاهزة";
+
+    // ✅ فلتر بالـ WarehouseId
+    var feedMixWarehouseItem = await _context.WarehouseItems
+        .Include(wi => wi.Item)
+        .FirstOrDefaultAsync(wi => wi.WarehouseId == feedMix.WarehouseId &&
+                                   wi.Item.Name == warehouseItemName);
+
+    // ✅ رجّع الكميات للمواد الأصلية بالـ WarehouseId الصح
+    foreach (var detail in feedMix.Details)
+    {
+        var warehouseItem = await _context.WarehouseItems
+            .FirstOrDefaultAsync(wi => wi.ItemId == detail.ItemId &&
+                                       wi.WarehouseId == feedMix.WarehouseId);
+        if (warehouseItem != null)
+        {
+            warehouseItem.Quantity += detail.Quantity;
+            warehouseItem.Withdrawn -= detail.Quantity;
+        }
+    }
+
+    // شيل الخلطة من الوير هوس
+    if (feedMixWarehouseItem != null)
+    {
+        feedMixWarehouseItem.Quantity -= feedMix.TotalWeight;
+
+        if (feedMixWarehouseItem.Quantity <= 0)
+        {
+            _context.WarehouseItems.Remove(feedMixWarehouseItem);
+            _context.Items.Remove(feedMixWarehouseItem.Item);
+        }
+    }
+
+    _context.FeedMixes.Remove(feedMix);
+    await _context.SaveChangesAsync();
+
+    return Ok("FeedMix deleted and quantities restored successfully.");
+}
     }
 }

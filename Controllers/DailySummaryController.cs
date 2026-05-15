@@ -5,7 +5,6 @@ using FarmManagement.API.Data;
 using FarmManagement.API.Models;
 using System.Globalization;
 
-
 namespace FarmManagement.API.Controllers
 {
     [Route("api/[controller]")]
@@ -30,6 +29,7 @@ namespace FarmManagement.API.Controllers
             var fromDate = startDate?.Date ?? DateTime.Today.AddDays(-7);
             var toDate = (endDate?.Date ?? DateTime.Today).AddDays(1).AddTicks(-1);
 
+            // ================= Cycles =================
             var cyclesQuery = _context.Cycles
                 .Where(c => c.StartDate <= toDate && c.EndDate >= fromDate);
 
@@ -40,6 +40,7 @@ namespace FarmManagement.API.Controllers
                 .Select(c => new { c.Id, c.Name })
                 .ToListAsync();
 
+            // ================= Data Load =================
             var dailyRecords = await _context.DailyRecords
                 .Where(d => d.Date >= fromDate && d.Date <= toDate)
                 .Include(d => d.FeedConsumptions)
@@ -54,58 +55,79 @@ namespace FarmManagement.API.Controllers
                 .Where(s => s.Date >= fromDate && s.Date <= toDate)
                 .ToListAsync();
 
+            // ================= Grouping (IMPORTANT FIX) =================
+            var dailyGrouped = dailyRecords
+                .GroupBy(d => new { d.CycleId, Date = d.Date.Date })
+                .ToDictionary(g => (g.Key.CycleId, g.Key.Date), g => g.First());
+
+            var eggGrouped = eggProductions
+                .GroupBy(e => new { e.CycleId, Date = e.Date.Date })
+                .ToDictionary(g => (g.Key.CycleId, g.Key.Date), g => g.ToList());
+
+            var salesGrouped = eggSales
+                .GroupBy(s => s.Date.Date)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+
             var summaryList = new List<DailySummaryDto>();
 
+            // ================= Processing =================
             for (var date = fromDate.Date; date <= toDate.Date; date = date.AddDays(1))
             {
                 foreach (var cycle in cycles)
                 {
-                    var dailyRecord = dailyRecords
-                        .FirstOrDefault(d => d.CycleId == cycle.Id && d.Date.Date == date);
-
-                    var eggProduction = eggProductions
-                        .FirstOrDefault(e => e.CycleId == cycle.Id && e.Date.Date == date);
+                    dailyGrouped.TryGetValue((cycle.Id, date), out var dailyRecord);
+                    eggGrouped.TryGetValue((cycle.Id, date), out var eggRecords);
+                    salesGrouped.TryGetValue(date, out var eggsSold);
 
                     decimal eggsGood = 0;
                     decimal eggsBroken = 0;
                     decimal eggsDouble = 0;
+                    decimal eggsFarza = 0;
 
-                    if (eggProduction != null)
+                    if (eggRecords != null && eggRecords.Any())
                     {
-                        eggsGood = eggProduction.Details
+                        var details = eggRecords.SelectMany(e => e.Details);
+
+                        eggsGood = details
                             .Where(d => d.EggQuality == EggQualityType.Normal)
                             .Sum(d => d.CartonsCount);
 
-                        eggsBroken = eggProduction.Details
+                        eggsBroken = details
                             .Where(d => d.EggQuality == EggQualityType.Broken)
                             .Sum(d => d.CartonsCount);
 
-                        eggsDouble = eggProduction.Details
+                        eggsDouble = details
                             .Where(d => d.EggQuality == EggQualityType.Double)
                             .Sum(d => d.CartonsCount);
-                    }
 
-                    var eggsSold = eggSales
-                        .Where(s => s.Date.Date == date)
-                        .Sum(s => s.Quantity);
+                        eggsFarza = details
+                            .Where(d => d.EggQuality == EggQualityType.Farza)
+                            .Sum(d => d.CartonsCount);
+                    }
 
                     summaryList.Add(new DailySummaryDto
                     {
                         Date = date,
                         DayName = date.ToString("dddd", new CultureInfo("ar-EG")),
                         CycleName = cycle.Name,
+
                         ChickAge = dailyRecord?.ChickAge ?? 0,
                         DeadCount = dailyRecord?.DeadCount ?? 0,
-                        FeedConsumed = (int)(dailyRecord?.FeedConsumptions.Sum(f => f.Quantity) ?? 0),
+
+                        FeedConsumed = dailyRecord?.FeedConsumptions.Sum(f => f.Quantity) ?? 0,
+
                         EggsGood = eggsGood,
                         EggsBroken = eggsBroken,
                         EggsDouble = eggsDouble,
-                        EggsTotal = eggsGood + eggsBroken + eggsDouble,
+                        EggsFarza = eggsFarza,
+                        EggsTotal = eggsGood + eggsBroken + eggsDouble + eggsFarza,
+
                         EggsSold = eggsSold
                     });
                 }
             }
 
+            // ================= Sorting + Paging =================
             var orderedList = summaryList
                 .OrderByDescending(s => s.Date)
                 .ThenBy(s => s.CycleName)

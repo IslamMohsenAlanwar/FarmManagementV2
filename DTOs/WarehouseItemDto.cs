@@ -10,12 +10,13 @@ namespace FarmManagement.API.DTOs
         public string ItemName { get; set; } = string.Empty;
 
         public decimal Quantity { get; set; }
-        public decimal PricePerUnit { get; set; }
         public decimal Withdrawn { get; set; }
 
+        public decimal PricePerUnit { get; set; }
+
+        public decimal TotalValue { get; set; }
+        public decimal RemainingQuantity { get; set; }
+
         public string? EggQuality { get; set; }
-
-    public decimal TotalValue => Quantity * PricePerUnit;
-
     }
 }

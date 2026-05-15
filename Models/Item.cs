@@ -17,6 +17,7 @@ namespace FarmManagement.API.Models
         public decimal PricePerTon { get; set; } = 0;
 
         public ItemType ItemType { get; set; } = ItemType.RawMaterial;
+        public int? FeedTypeId { get; set; }
 
         public ICollection<WarehouseItem> WarehouseItems { get; set; } = new List<WarehouseItem>();
     }

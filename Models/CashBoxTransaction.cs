@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using FarmManagement.API.Enums;
 
 namespace FarmManagement.API.Models
 {
@@ -7,8 +8,8 @@ public class CashBoxTransaction
     public int Id { get; set; }
     public DateTime Date { get; set; }
 
-    public string Type { get; set; } = string.Empty;// "Income" أو "Expense"
-    public string Category { get; set; } = string.Empty; //  "EggSale", "ChickenSale", "Deposit", "Purchase", "Salary", "Advance", "Other"
+    public CashBoxType Type { get; set; } 
+    public CashBoxCategory Category { get; set; } 
 
     public decimal Amount { get; set; }
     public string? Notes { get; set; }

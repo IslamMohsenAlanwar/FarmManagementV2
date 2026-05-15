@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using FarmManagement.API.Data;
 using FarmManagement.API.Models;
 using FarmManagement.API.DTOs;
+using FarmManagement.API.Enums;
 
 namespace FarmManagement.API.Controllers
 {
@@ -131,80 +132,91 @@ namespace FarmManagement.API.Controllers
             await _context.SaveChangesAsync();
             return NoContent();
         }
-
         [HttpPost("pay-trader")]
-public async Task<ActionResult> PayTrader([FromBody] PayTraderDto dto)
-{
-    var trader = await _context.Traders.FindAsync(dto.TraderId);
-    if (trader == null)
-        return BadRequest("المورد غير موجود.");
-
-    var date = dto.Date ?? DateTime.Now;
-
-    await using var transaction = await _context.Database.BeginTransactionAsync();
-
-    try
-    {
-        // =========================
-        // تحديث الخزنة بالمبلغ المدفوع
-        // =========================
-        if (dto.Amount > 0 && dto.WarehouseId.HasValue)
+        public async Task<ActionResult> PayTrader([FromBody] PayTraderDto dto)
         {
-            var cashBoxEntry = new CashBoxTransaction
+            var trader = await _context.Traders.FindAsync(dto.TraderId);
+
+            if (trader == null || trader.Type != TraderType.مورد)
+                return BadRequest("المورد غير موجود.");
+
+            if (dto.Amount <= 0)
+                return BadRequest("يجب أن يكون المبلغ أكبر من صفر.");
+
+            var date = dto.Date ?? DateTime.Now;
+
+            if (date.Date > DateTime.Today)
+                return BadRequest("لا يمكن اختيار تاريخ مستقبلي.");
+
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
             {
-                Date = date,
-                Type = "منصرف",
-                Category = "دفع لمورد",
-                Amount = dto.Amount,
-                Notes = dto.Notes ?? $"دفع للمورد {trader.Name}",
-                TraderId = trader.Id,
-                WarehouseId = dto.WarehouseId.Value
-            };
-            _context.CashBoxTransactions.Add(cashBoxEntry);
+                // =========================
+                // الرصيد الحالي
+                // =========================
+                decimal previousBalance = trader.Balance;
+
+                if (dto.Amount > previousBalance)
+                    return BadRequest(
+                        $"المبلغ المدفوع أكبر من رصيد المورد الحالي ({previousBalance}).");
+
+                decimal newBalance = previousBalance - dto.Amount;
+
+                // =========================
+                // تحديث الخزنة
+                // =========================
+                if (dto.WarehouseId.HasValue)
+                {
+                    _context.CashBoxTransactions.Add(new CashBoxTransaction
+                    {
+                        Date = date,
+                        Type = CashBoxType.Expense,
+                        Category = CashBoxCategory.Purchase,
+                        Amount = dto.Amount,
+                        Notes = dto.Notes ?? $"دفع للمورد {trader.Name}",
+                        TraderId = trader.Id,
+                        WarehouseId = dto.WarehouseId.Value
+                    });
+                }
+
+                // =========================
+                // تحديث رصيد المورد
+                // =========================
+                trader.Balance = newBalance;
+
+                // =========================
+                // تسجيل الحركة في Ledger
+                // =========================
+                _context.TraderLedgers.Add(new TraderLedger
+                {
+                    TraderId = trader.Id,
+                    Date = date,
+                    Debit = 0,
+                    Credit = dto.Amount,
+                    Balance = newBalance,
+                    Notes = dto.Notes ?? "دفع لمورد"
+                });
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return Ok(new
+                {
+                    message = "تم دفع المبلغ بنجاح",
+                    paid = dto.Amount,
+                    previousBalance = previousBalance,
+                    remainingBalance = newBalance
+                });
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                return BadRequest("حدث خطأ أثناء تسجيل الدفع");
+            }
         }
 
-        // =========================
-        // تحديث Ledger المورد
-        // =========================
-        var lastLedger = await _context.TraderLedgers
-            .Where(l => l.TraderId == trader.Id)
-            .OrderByDescending(l => l.Date)
-            .FirstOrDefaultAsync();
 
-        decimal previousBalance = lastLedger?.Balance ?? 0;
-        if (dto.Amount > previousBalance)
-            return BadRequest($"المبلغ المدفوع أكبر من رصيد المورد الحالي ({previousBalance}).");
-
-        decimal newBalance = previousBalance - dto.Amount;
-
-        var ledgerEntry = new TraderLedger
-        {
-            TraderId = trader.Id,
-            Date = date,
-            Debit = 0,
-            Credit = dto.Amount,
-            Balance = newBalance,
-            Notes = dto.Notes ?? $"دفع لمورد"
-        };
-
-        _context.TraderLedgers.Add(ledgerEntry);
-
-        await _context.SaveChangesAsync();
-        await transaction.CommitAsync();
-
-        return Ok(new
-        {
-            message = "تم دفع المبلغ بنجاح",
-            paid = dto.Amount,
-            remainingBalance = newBalance
-        });
-    }
-    catch (Exception)
-    {
-        await transaction.RollbackAsync();
-        return BadRequest("حدث خطأ أثناء تسجيل الدفع");
-    }
-}
 
         [HttpGet("trader/{traderId}/ledger")]
         public async Task<ActionResult> GetTraderLedger(
@@ -231,11 +243,11 @@ public async Task<ActionResult> PayTrader([FromBody] PayTraderDto dto)
         }
 
 
-    [HttpGet("supplier/{traderId}/invoices")]
-     public async Task<ActionResult<SupplierInvoiceReportDto>> GetSupplierInvoices(
-    int traderId,
-    int SkipCount = 0,
-    int MaxResultCount = 10)
+        [HttpGet("supplier/{traderId}/invoices")]
+        public async Task<ActionResult<SupplierInvoiceReportDto>> GetSupplierInvoices(
+        int traderId,
+        int SkipCount = 0,
+        int MaxResultCount = 10)
         {
             var trader = await _context.Traders.FindAsync(traderId);
             if (trader == null || trader.Type != TraderType.مورد)
@@ -334,7 +346,7 @@ public async Task<ActionResult> PayTrader([FromBody] PayTraderDto dto)
                 TraderName = trader.Name,
                 CurrentBalance = trader.Balance,
                 Invoices = invoices,
-                TotalCount = totalCount 
+                TotalCount = totalCount
             };
 
             return Ok(report);

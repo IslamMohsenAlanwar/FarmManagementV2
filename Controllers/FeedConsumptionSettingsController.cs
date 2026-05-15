@@ -5,6 +5,7 @@ using FarmManagement.API.Data;
 using FarmManagement.API.Models;
 using FarmManagement.API.DTOs;
 using BCrypt.Net;
+using FarmManagement.API.Services;
 
 namespace FarmManagement.API.Controllers
 {
@@ -12,11 +13,16 @@ namespace FarmManagement.API.Controllers
     [ApiController]
     public class FeedConsumptionSettingsController : ControllerBase
     {
-        private readonly FarmDbContext _context;
 
-        public FeedConsumptionSettingsController(FarmDbContext context)
+        private readonly FarmDbContext _context;
+        private readonly IFeedConsumptionReportExportService _exportService;
+
+        public FeedConsumptionSettingsController(
+            FarmDbContext context,
+            IFeedConsumptionReportExportService exportService)
         {
             _context = context;
+            _exportService = exportService;
         }
 
         [HttpPost]
@@ -183,6 +189,18 @@ namespace FarmManagement.API.Controllers
                 TotalCount = report.Count,
                 Items = paginatedItems
             });
+        }
+
+        [HttpGet("export-excel/{cycleId}")]
+        public async Task<IActionResult> ExportExcel(int cycleId)
+        {
+            var file = await _exportService.ExportReportExcelAsync(cycleId);
+
+            return File(
+                file,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                $"egg-report-{cycleId}.xlsx"
+            );
         }
 
 

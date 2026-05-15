@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using FarmManagement.API.Data;
 using FarmManagement.API.Models;
 using FarmManagement.API.DTOs;
+using FarmManagement.API.Enums;
 
 namespace FarmManagement.API.Controllers
 {
@@ -237,6 +238,28 @@ namespace FarmManagement.API.Controllers
                 .ToListAsync();
 
             return Ok(list);
+        }
+
+        [HttpGet("categories-lookup")]
+        public IActionResult GetCategoriesLookup()
+        {
+            var categories = Enum.GetValues(typeof(CashBoxCategory))
+                .Cast<CashBoxCategory>()
+                .Select(c => EnumHelper.ToEnumResponse(c))
+                .ToList();
+
+            return Ok(categories);
+        }
+
+        [HttpGet("types-lookup")]
+        public IActionResult GetTypesLookup()
+        {
+            var types = Enum.GetValues(typeof(CashBoxType))
+                .Cast<CashBoxType>()
+                .Select(t => EnumHelper.ToEnumResponse(t))
+                .ToList();
+
+            return Ok(types);
         }
 
     }

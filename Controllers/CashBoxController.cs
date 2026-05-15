@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using FarmManagement.API.Data;
 using FarmManagement.API.Models;
 using FarmManagement.API.DTOs;
+using FarmManagement.API.Enums;
 
 namespace FarmManagement.API.Controllers
 {
@@ -19,7 +20,7 @@ namespace FarmManagement.API.Controllers
 
         //  عرض كل الحركات (الجديد فوق)
         [HttpGet]
-        public async Task<IActionResult> GetAll(int SkipCount = 0, int MaxResultCount = 7) // القيمة الافتراضية 7
+        public async Task<IActionResult> GetAll(int SkipCount = 0, int MaxResultCount = 7)
         {
             var query = _context.CashBoxTransactions
                 .OrderByDescending(t => t.Id);
@@ -29,6 +30,20 @@ namespace FarmManagement.API.Controllers
             var transactions = await query
                 .Skip(SkipCount)
                 .Take(MaxResultCount)
+                .Select(t => new
+                {
+                    t.Id,
+                    t.Date,
+
+                    Type = EnumHelper.ToEnumResponse(t.Type),
+                    Category = EnumHelper.ToEnumResponse(t.Category),
+
+                    t.Amount,
+                    t.Notes,
+                    t.TraderId,
+                    t.WorkerId,
+                    t.WarehouseId
+                })
                 .ToListAsync();
 
             return Ok(new
@@ -38,41 +53,52 @@ namespace FarmManagement.API.Controllers
             });
         }
 
-        //  تقرير الخزنة
         [HttpGet("report")]
-        public async Task<IActionResult> GetReport(DateTime? from, DateTime? to)
+        public async Task<IActionResult> GetReport(
+    DateTime? from,
+    DateTime? to,
+    CashBoxCategory? category = null,
+    CashBoxType? type = null,
+    int SkipCount = 0,
+    int MaxResultCount = 7)
         {
             var startDate = from ?? DateTime.MinValue;
             var endDate = to ?? DateTime.MaxValue;
 
-            // 🔹 رصيد أول المدة
-            var openingTransactions = await _context.CashBoxTransactions
-                .Where(t => t.Date < startDate)
-                .ToListAsync();
+            var baseQuery = _context.CashBoxTransactions
+                .Where(t => t.Date >= startDate && t.Date <= endDate);
 
-            var openingIncome = openingTransactions
-                .Where(t => t.Type == "Income" || t.Type == "إيراد")
-                .Sum(t => t.Amount);
+            // 🔹 فلترة بالـ Category
+            if (category.HasValue)
+                baseQuery = baseQuery.Where(t => t.Category == category.Value);
 
-            var openingExpense = openingTransactions
-                .Where(t => t.Type == "Expense" || t.Type == "منصرف")
-                .Sum(t => t.Amount);
+            // 🔹 فلترة بالـ Type
+            if (type.HasValue)
+                baseQuery = baseQuery.Where(t => t.Type == type.Value);
 
-            var openingBalance = openingIncome - openingExpense;
+            var totalCount = await baseQuery.CountAsync();
 
-            // 🔹 حركات الفترة
-            var periodTransactions = await _context.CashBoxTransactions
-                .Where(t => t.Date >= startDate && t.Date <= endDate)
+            var transactions = await baseQuery
                 .OrderByDescending(t => t.Id)
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
                 .ToListAsync();
 
-            var totalIncome = periodTransactions
-                .Where(t => t.Type == "Income" || t.Type == "إيراد")
-                .Sum(t => t.Amount);
+            var openingBalance = await _context.CashBoxTransactions
+                .Where(t => t.Date < startDate)
+                .Where(t => !category.HasValue || t.Category == category)
+                .Where(t => !type.HasValue || t.Type == type)
+                .SumAsync(t =>
+                    t.Type == CashBoxType.Income ? t.Amount : -t.Amount
+                );
 
-            var totalExpense = periodTransactions
-                .Where(t => t.Type == "Expense" || t.Type == "منصرف")
-                .Sum(t => t.Amount);
+            var totalIncome = await baseQuery
+                .Where(t => t.Type == CashBoxType.Income)
+                .SumAsync(t => t.Amount);
+
+            var totalExpense = await baseQuery
+                .Where(t => t.Type == CashBoxType.Expense)
+                .SumAsync(t => t.Amount);
 
             var closingBalance = openingBalance + totalIncome - totalExpense;
 
@@ -82,21 +108,37 @@ namespace FarmManagement.API.Controllers
                 totalIncome,
                 totalExpense,
                 closingBalance,
-                transactions = periodTransactions
+                totalCount,
+                skipCount = SkipCount,
+                maxResultCount = MaxResultCount,
+                transactions = transactions.Select(t => new
+                {
+                    t.Id,
+                    t.Date,
+                    Type = EnumHelper.ToEnumResponse(t.Type),
+                    Category = EnumHelper.ToEnumResponse(t.Category),
+                    t.Amount,
+                    t.Notes
+                })
             });
         }
 
-        //  إضافة مصروف آخر
         [HttpPost("expense/other")]
         public async Task<IActionResult> AddOtherExpense([FromBody] CreateExpenseDto dto)
         {
+            if (string.IsNullOrWhiteSpace(dto.Notes))
+                return BadRequest(new
+                {
+                    message = "يجب إدخال الوصف كملاحظة للمبلغ المصروف"
+                });
+
             var date = dto.Date ?? DateTime.Now;
 
             var expense = new CashBoxTransaction
             {
                 Date = date,
-                Type = "منصرف",
-                Category = "أخرى",
+                Type = CashBoxType.Expense,
+                Category = CashBoxCategory.Other,
                 Amount = dto.Amount,
                 Notes = dto.Notes
             };
@@ -106,25 +148,51 @@ namespace FarmManagement.API.Controllers
 
             return Ok(new { message = "تم تسجيل المصروف بنجاح", expense });
         }
-//  إضافة إيراد آخر
-[HttpPost("income/other")]
-public async Task<IActionResult> AddOtherIncome([FromBody] CreateExpenseDto dto)
-{
-    var date = dto.Date ?? DateTime.Now;
 
-    var income = new CashBoxTransaction
-    {
-        Date = date,
-        Type = "إيراد",
-        Category = "أخرى",
-        Amount = dto.Amount,
-        Notes = dto.Notes
-    };
+        //  إضافة إيراد آخر
+        // [HttpPost("income/other")]
+        // public async Task<IActionResult> AddOtherIncome([FromBody] CreateExpenseDto dto)
+        // {
+        //     var date = dto.Date ?? DateTime.Now;
 
-    _context.CashBoxTransactions.Add(income);
-    await _context.SaveChangesAsync();
+        //     var income = new CashBoxTransaction
+        //     {
+        //         Date = date,
+        //         Type = CashBoxType.Income,
+        //         Category = CashBoxCategory.Other,
+        //         Amount = dto.Amount,
+        //         Notes = dto.Notes
+        //     };
 
-    return Ok(new { message = "تم تسجيل الإيراد بنجاح", income });
-}
+        //     _context.CashBoxTransactions.Add(income);
+        //     await _context.SaveChangesAsync();
+
+        //     return Ok(new { message = "تم تسجيل الإيراد بنجاح", income });
+        // }
+        [HttpPost("income/other")]
+        public async Task<IActionResult> AddOtherIncome([FromBody] CreateExpenseDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Notes))
+                return BadRequest(new
+                {
+                    message = "يجب إدخال الوصف كملاحظة للمبلغ الوارد"
+                });
+
+            var date = dto.Date ?? DateTime.Now;
+
+            var income = new CashBoxTransaction
+            {
+                Date = date,
+                Type = CashBoxType.Income,
+                Category = CashBoxCategory.Other,
+                Amount = dto.Amount,
+                Notes = dto.Notes
+            };
+
+            _context.CashBoxTransactions.Add(income);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "تم تسجيل الإيراد بنجاح", income });
+        }
     }
 }

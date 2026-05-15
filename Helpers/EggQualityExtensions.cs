@@ -11,6 +11,7 @@ namespace FarmManagement.API.Helpers
                 EggQualityType.Normal => "سليم",
                 EggQualityType.Broken => "كسر",
                 EggQualityType.Double => "دبل",
+                EggQualityType.Farza => "فرزه",
                 _ => type.ToString()
             };
         }

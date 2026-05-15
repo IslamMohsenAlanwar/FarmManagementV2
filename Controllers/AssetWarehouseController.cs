@@ -124,6 +124,8 @@ namespace FarmManagement.API.Controllers
             return Ok("Asset added to warehouse successfully.");
         }
 
+
+
         // ================== Post WithdrawAssetToBarn ==================
         [HttpPost("withdraw")]
         public async Task<IActionResult> WithdrawAsset(AssetTransactionDto dto)

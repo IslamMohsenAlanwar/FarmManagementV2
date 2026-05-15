@@ -87,13 +87,31 @@ namespace FarmManagement.API.Controllers
         public async Task<IActionResult> Delete(int id)
         {
             var item = await _context.EvaluationItems.FindAsync(id);
+
             if (item == null)
-                return NotFound();
+                return NotFound(new { message = "البند غير موجود." });
+
+            //  تحقق هل مستخدم في التقييمات
+            var isUsed = await _context.CycleEvaluationDetails
+                .AnyAsync(d => d.EvaluationItemId == id);
+
+            if (isUsed)
+            {
+                return BadRequest(new
+                {
+                    message = "لا يمكن حذف البند لأنه مستخدم في التقييمات.",
+                    canDelete = false
+                });
+            }
 
             _context.EvaluationItems.Remove(item);
             await _context.SaveChangesAsync();
 
-            return NoContent();
+            return Ok(new
+            {
+                message = "تم حذف البند بنجاح.",
+                id = id
+            });
         }
     }
 }

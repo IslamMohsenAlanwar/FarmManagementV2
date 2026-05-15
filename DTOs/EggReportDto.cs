@@ -10,6 +10,7 @@ namespace FarmManagement.API.DTOs
         public decimal BrokenCartons { get; set; }
         public decimal DoubleCartons { get; set; }
         public decimal NormalCartons { get; set; }
+        public decimal FarzaCartons { get; set; }
         public decimal TotalActualCartons { get; set; }
 
         // ===== أطباق البيض المستهدفة =====

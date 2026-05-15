@@ -115,11 +115,31 @@ namespace FarmManagement.API.Controllers
         public async Task<IActionResult> DeleteItem(int id)
         {
             var item = await _context.Items.FindAsync(id);
-            if (item == null) return NotFound();
+
+            if (item == null)
+                return NotFound(new { message = "الصنف غير موجود." });
+
+            //  التحقق هل الصنف مستخدم في المخزن
+            var usedInWarehouse = await _context.WarehouseItems
+                .AnyAsync(w => w.ItemId == id);
+
+            if (usedInWarehouse)
+            {
+                return BadRequest(new
+                {
+                    message = "لا يمكن حذف هذا الصنف لأنه مستخدم داخل المخزن.",
+                    canDelete = false
+                });
+            }
 
             _context.Items.Remove(item);
             await _context.SaveChangesAsync();
-            return NoContent();
+
+            return Ok(new
+            {
+                message = "تم حذف الصنف بنجاح.",
+                id = id
+            });
         }
     }
 }

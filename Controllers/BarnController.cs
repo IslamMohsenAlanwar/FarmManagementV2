@@ -128,12 +128,31 @@ namespace FarmManagement.API.Controllers
         public async Task<IActionResult> DeleteBarn(int id)
         {
             var barn = await _context.Barns.FindAsync(id);
-            if (barn == null) return NotFound();
+
+            if (barn == null)
+                return NotFound(new { message = "العنبر غير موجود." });
+
+            //  التحقق هل العنبر عليه دورات
+            var hasCycles = await _context.Cycles
+                .AnyAsync(c => c.BarnId == id);
+
+            if (hasCycles)
+            {
+                return BadRequest(new
+                {
+                    message = "لا يمكن حذف العنبر لأنه يحتوي على دورات إنتاج مرتبطة به.",
+                    canDelete = false
+                });
+            }
 
             _context.Barns.Remove(barn);
             await _context.SaveChangesAsync();
 
-            return NoContent();
+            return Ok(new
+            {
+                message = "تم حذف العنبر بنجاح.",
+                id
+            });
         }
     }
 }

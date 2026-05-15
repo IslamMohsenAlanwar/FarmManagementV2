@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using FarmManagement.API.Data;
 using FarmManagement.API.Models;
 using FarmManagement.API.DTOs;
+using FarmManagement.API.Enums;
 
 namespace FarmManagement.API.Controllers
 {
@@ -88,8 +89,8 @@ if (dto.PaidAmount > 0)
                 var cashBoxEntry = new CashBoxTransaction
                 {
                     Date = dto.Date,
-                    Type = "إيراد",
-                    Category = "بيع فراخ",
+                    Type = CashBoxType.Income,
+                    Category = CashBoxCategory.ChickenSale,
                     Amount = dto.PaidAmount, // الفلوس اللي اتدفعت فعلياً
                     Notes = $"بيع فراخ لتاجر {trader.Name}",
                     TraderId = trader.Id

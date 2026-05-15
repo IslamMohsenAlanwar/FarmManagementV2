@@ -14,4 +14,14 @@ namespace FarmManagement.API.DTOs
         public decimal CumulativeBalance { get; set; }
         public string? EggQuality { get; set; }
     }
+
+    public class EggSaleLiteDto
+    {
+        public int Id { get; set; }
+        public string TraderName { get; set; } = string.Empty;
+        public string WarehouseName { get; set; } = string.Empty;
+        public DateTime Date { get; set; }
+        public decimal Quantity { get; set; }
+        public string? EggQuality { get; set; }
+    }
 }

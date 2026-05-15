@@ -27,12 +27,26 @@ namespace FarmManagement.API.Controllers
                 .Include(c => c.DailyRecords)
                 .FirstOrDefaultAsync(c => c.Id == dto.CycleId);
 
-            if (cycle == null) return BadRequest("Cycle not found.");
+            if (cycle == null)
+                return BadRequest("Cycle not found.");
 
-            var lastDaily = cycle.DailyRecords.OrderByDescending(d => d.Date).FirstOrDefault();
-            if (lastDaily == null) return BadRequest("No daily record found.");
+            // ================= VALIDATION (IMPORTANT) =================
 
-            var liveBirds = lastDaily.RemainingChicks;
+            if (!cycle.DailyRecords.Any())
+                return BadRequest("لا يوجد تسجيل يومي للدورة ، يجب إضافة تسجيل يومي أولاً.");
+
+            var hasDailyRecordForDate = cycle.DailyRecords
+                .Any(d => d.Date.Date == dto.Date.Date);
+
+            if (!hasDailyRecordForDate)
+                return BadRequest("يجب إنشاء تسجيل يومي أولاً لنفس تاريخ الإنتاج قبل تسجيل الإنتاج.");
+
+            // ==========================================================
+
+            var dailyRecord = cycle.DailyRecords
+                .First(d => d.Date.Date == dto.Date.Date);
+
+            var liveBirds = dailyRecord.RemainingChicks;
 
             await using var transaction = await _context.Database.BeginTransactionAsync();
 
@@ -64,7 +78,9 @@ namespace FarmManagement.API.Controllers
                 }
 
                 record.TotalEggs = totalEggs;
-                record.ProductionRate = liveBirds == 0 ? 0 : (decimal)totalEggs / liveBirds * 100;
+                record.ProductionRate = liveBirds == 0
+                    ? 0
+                    : (decimal)totalEggs / liveBirds * 100;
 
                 _context.EggProductionRecords.Add(record);
                 await _context.SaveChangesAsync();
@@ -144,17 +160,26 @@ namespace FarmManagement.API.Controllers
         // ================= GET: By Farm =================
         [HttpGet("farm/{farmId}/eggs")]
         public async Task<ActionResult> GetEggProductionByFarm(
-        int farmId,
-        int SkipCount = 0,
-        int MaxResultCount = 7)  // القيمة الافتراضية 7
+            int farmId,
+            int SkipCount = 0,
+            int MaxResultCount = 7,
+             int? CycleId = null)
+
         {
             var arabicCulture = new CultureInfo("ar-EG");
 
             var query = _context.EggProductionRecords
                 .Include(r => r.Barn)
+                .Include(r => r.Cycle)
                 .Include(r => r.Details)
-                .Where(r => r.FarmId == farmId)
-                .OrderByDescending(r => r.Date);
+                .Where(r => r.FarmId == farmId);
+
+            if (CycleId.HasValue)
+            {
+                query = query.Where(r => r.CycleId == CycleId.Value);
+            }
+            query = query.OrderByDescending(r => r.Date);
+
 
             var totalCount = await query.CountAsync();
 
@@ -163,14 +188,39 @@ namespace FarmManagement.API.Controllers
                 .Take(MaxResultCount)
                 .ToListAsync();
 
+            // ================= ChickAge Lookup =================
+
+            var cycleIds = records.Select(r => r.CycleId).Distinct().ToList();
+            var dates = records.Select(r => r.Date.Date).Distinct().ToList();
+
+            var dailyRecords = await _context.DailyRecords
+                .Where(d => cycleIds.Contains(d.CycleId) && dates.Contains(d.Date.Date))
+                .ToListAsync();
+
+            var chickAgeLookup = dailyRecords
+                .ToDictionary(
+                    d => new { d.CycleId, Date = d.Date.Date },
+                    d => d.ChickAge
+                );
+
+            // ================= Mapping =================
+
             var result = records.SelectMany(r => r.Details.Select(d => new EggProductionByBarnDto
             {
                 BarnName = r.Barn.Name,
+                CycleName = r.Cycle.Name,
+                CycleId = r.CycleId,
                 EggQuality = d.EggQuality.ToArabic(),
                 CartonsCount = d.CartonsCount,
                 TotalEggs = d.TotalEggs,
                 Day = arabicCulture.DateTimeFormat.GetDayName(r.Date.DayOfWeek),
-                Date = r.Date
+                Date = r.Date,
+
+                //  Chick Age
+                ChickAge = chickAgeLookup.TryGetValue(
+                    new { r.CycleId, Date = r.Date.Date },
+                    out var age
+                ) ? age : 0
             })).ToList();
 
             return Ok(new
@@ -183,14 +233,15 @@ namespace FarmManagement.API.Controllers
 
         [HttpGet("farm/{farmId}/warehouse-eggs")]
         public async Task<ActionResult> GetEggWarehouseItems(
-    int farmId,
-    int SkipCount = 0,
-    int MaxResultCount = 7)  // القيمة الافتراضية 7
+      int farmId,
+      int SkipCount = 0,
+      int MaxResultCount = 7)
         {
             var query = _context.WarehouseItems
                 .Include(wi => wi.Item)
                 .Include(wi => wi.Warehouse)
-                .Where(wi => wi.Warehouse.FarmId == farmId && wi.Item.ItemType == ItemType.Egg)
+                .Where(wi => wi.Warehouse.FarmId == farmId
+                          && wi.Item.ItemType == ItemType.Egg)
                 .OrderByDescending(wi => wi.Id);
 
             var totalCount = await query.CountAsync();
@@ -205,10 +256,15 @@ namespace FarmManagement.API.Controllers
                     WarehouseName = wi.Warehouse.Name,
                     ItemId = wi.ItemId,
                     ItemName = wi.Item.Name,
+
                     Quantity = wi.Quantity,
-                    PricePerUnit = wi.PricePerUnit,
                     Withdrawn = wi.Withdrawn,
-                    EggQuality = wi.EggQuality.HasValue ? wi.EggQuality.Value.ToArabic() : null
+
+                    RemainingQuantity = wi.Quantity - wi.Withdrawn,
+
+                    EggQuality = wi.EggQuality.HasValue
+                        ? wi.EggQuality.Value.ToArabic()
+                        : null
                 })
                 .ToListAsync();
 
@@ -216,6 +272,61 @@ namespace FarmManagement.API.Controllers
             {
                 TotalCount = totalCount,
                 WarehouseEggs = items
+            });
+        }
+
+        [HttpGet("farm/{farmId}/eggs/summary-by-cycle")]
+        public async Task<ActionResult> GetEggSummaryByCycle(
+            int farmId,
+            int SkipCount = 0,
+            int MaxResultCount = 7)
+        {
+            var baseQuery = _context.EggProductionRecords
+                .Include(r => r.Cycle)
+                .Include(r => r.Details)
+                .Where(r => r.FarmId == farmId)
+                .SelectMany(r => r.Details, (r, d) => new
+                {
+                    r.CycleId,
+                    CycleName = r.Cycle.Name,
+                    d.CartonsCount,
+                    d.EggQuality
+                })
+                .GroupBy(x => new { x.CycleId, x.CycleName })
+                .Select(g => new CycleEggSummaryDto
+                {
+                    CycleId = g.Key.CycleId,
+                    CycleName = g.Key.CycleName,
+
+                    TotalCartons = g.Sum(x => x.CartonsCount),
+
+                    NormalEggs = g.Where(x => x.EggQuality == EggQualityType.Normal)
+                                  .Sum(x => x.CartonsCount),
+
+                    BrokenEggs = g.Where(x => x.EggQuality == EggQualityType.Broken)
+                                  .Sum(x => x.CartonsCount),
+
+                    DoubleEggs = g.Where(x => x.EggQuality == EggQualityType.Double)
+                                  .Sum(x => x.CartonsCount),
+
+                    FarzaEggs = g.Where(x => x.EggQuality == EggQualityType.Farza)
+                                 .Sum(x => x.CartonsCount)
+                });
+
+            // 🔥 إجمالي عدد الدورات
+            var totalCount = await baseQuery.CountAsync();
+
+            // 🔥 Pagination على الدورات
+            var result = await baseQuery
+                .OrderByDescending(x => x.CycleId)
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
+                .ToListAsync();
+
+            return Ok(new
+            {
+                TotalCount = totalCount,
+                Data = result
             });
         }
     }

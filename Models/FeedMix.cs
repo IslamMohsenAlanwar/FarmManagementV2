@@ -8,6 +8,8 @@ namespace FarmManagement.API.Models
 
         public int FeedTypeId { get; set; }
         public FeedType FeedType { get; set; } = null!;
+         public int WarehouseId { get; set; }  // ← ضيف ده
+
 
         public decimal TotalWeight { get; set; } = 0;
 

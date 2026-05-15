@@ -4,6 +4,8 @@ using FarmManagement.API.Data;
 using FarmManagement.API.Models;
 using FarmManagement.API.DTOs;
 using FarmManagement.API.Helpers;
+using FarmManagement.API.Enums;
+
 
 namespace FarmManagement.API.Controllers
 {
@@ -18,40 +20,62 @@ namespace FarmManagement.API.Controllers
         [HttpPost]
         public async Task<ActionResult> CreateSale(EggSaleCreateDto dto)
         {
-            // جلب التاجر
+            // =========================
+            // التحقق من العميل
+            // =========================
             var trader = await _context.Traders
                 .FirstOrDefaultAsync(t => t.Id == dto.TraderId);
 
             if (trader == null || trader.Type != TraderType.عميل)
-                return BadRequest("يجب اختيار تاجر مسجل كـ (مشتري بيض).");
+                return BadRequest("يجب اختيار تاجر مسجل كـ (عميل).");
 
+            // =========================
+            // التحقق من التاريخ
+            // =========================
+            var saleDate = dto.Date;
+
+            if (saleDate.Date > DateTime.Today)
+                return BadRequest("لا يمكن اختيار تاريخ مستقبلي.");
+
+            // =========================
             // جلب صنف البيض
+            // =========================
             var eggItem = await _context.Items
                 .FirstOrDefaultAsync(i => i.ItemType == ItemType.Egg);
 
             if (eggItem == null)
-                return BadRequest("صنف (البيض) غير معرف.");
+                return BadRequest("صنف البيض غير معرف.");
 
-            // جلب العنصر في المخزن بناءً على النوع
+            // =========================
+            // جلب المخزون حسب الجودة
+            // =========================
             var warehouseItem = await _context.WarehouseItems
                 .FirstOrDefaultAsync(wi =>
                     wi.WarehouseId == dto.WarehouseId &&
                     wi.ItemId == eggItem.Id &&
                     wi.EggQuality == dto.EggQuality);
 
-            if (warehouseItem == null || warehouseItem.Quantity < dto.Quantity)
-                return BadRequest($"الرصيد غير كافٍ للنوع {dto.EggQuality.ToArabic()}. المتاح: {(warehouseItem?.Quantity ?? 0)}");
+            if (warehouseItem == null)
+                return BadRequest($"لا يوجد مخزون للنوع {dto.EggQuality.ToArabic()}.");
+
+            decimal availableQty = warehouseItem.Quantity - warehouseItem.Withdrawn;
+
+            if (availableQty < dto.Quantity)
+                return BadRequest(
+                    $"الرصيد غير كافٍ للنوع {dto.EggQuality.ToArabic()}. المتاح: {availableQty}");
 
             await using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
             {
-                // إنشاء البيع
+                // =========================
+                // إنشاء فاتورة البيع
+                // =========================
                 var sale = new EggSale
                 {
                     WarehouseId = dto.WarehouseId,
                     TraderId = dto.TraderId,
-                    Date = dto.Date,
+                    Date = saleDate,
                     Quantity = dto.Quantity,
                     UnitPrice = 0,
                     TotalPrice = 0,
@@ -62,11 +86,14 @@ namespace FarmManagement.API.Controllers
 
                 _context.EggSales.Add(sale);
 
-                // تحديث المخزن
-                warehouseItem.Quantity -= dto.Quantity;
+                // =========================
+                // تحديث المخزون
+                // =========================
                 warehouseItem.Withdrawn += dto.Quantity;
 
-                // تسجيل حركة المخزن
+                // =========================
+                // حركة المخزن
+                // =========================
                 _context.WarehouseTransactions.Add(new WarehouseTransaction
                 {
                     WarehouseId = dto.WarehouseId,
@@ -74,35 +101,51 @@ namespace FarmManagement.API.Controllers
                     TraderId = dto.TraderId,
                     Quantity = dto.Quantity,
                     TransactionType = "Sale",
-                    Date = dto.Date,
+                    Date = saleDate,
                     EggSale = sale,
                     EggQuality = dto.EggQuality
                 });
 
-                // تسجيل الخزنة (المبلغ المدفوع فقط)
-                _context.CashBoxTransactions.Add(new CashBoxTransaction
+                // =========================
+                // تسجيل الخزنة
+                // =========================
+                if (dto.PaidAmount > 0)
                 {
-                    Date = dto.Date,
-                    Type = "إيراد",
-                    Category = "بيع بيض",
-                    Amount = dto.PaidAmount,
-                    Notes = $"دفعة مبدئية من {trader.Name}",
-                    TraderId = trader.Id,
-                    WarehouseId = dto.WarehouseId
-                });
+                    _context.CashBoxTransactions.Add(new CashBoxTransaction
+                    {
+                        Date = saleDate,
+                        Type = CashBoxType.Income,
+                        Category = CashBoxCategory.EggSale,
+                        Amount = dto.PaidAmount,
+                        Notes = $"دفعة من العميل {trader.Name}",
+                        TraderId = trader.Id,
+                        WarehouseId = dto.WarehouseId
+                    });
+                }
 
+                // =========================
+                // حفظ
+                // =========================
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
                 return Ok(new
                 {
-                    message = "تم تسجيل البيع المبدئي بنجاح"
+                    message = "تم تسجيل البيع بنجاح",
+                    soldQuantity = dto.Quantity,
+                    paid = dto.PaidAmount,
+                    remainingStock = warehouseItem.Quantity - warehouseItem.Withdrawn
                 });
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                return BadRequest(ex.Message);
+
+                return BadRequest(new
+                {
+                    message = "حدث خطأ أثناء تسجيل البيع",
+                    error = ex.Message
+                });
             }
         }
 
@@ -173,6 +216,42 @@ namespace FarmManagement.API.Controllers
                 PaidAmount = s.PaidAmount,
                 RemainingAmount = s.RemainingAmount,
                 CumulativeBalance = s.Trader != null ? s.Trader.Balance : 0,
+                EggQuality = s.WarehouseTransactions.FirstOrDefault()?.EggQuality.ToArabic()
+            }).ToList();
+
+            return Ok(new
+            {
+                TotalCount = totalCount,
+                Sales = result
+            });
+        }
+
+
+        [HttpGet("lite")]
+        public async Task<ActionResult> GetSalesLite(
+    int SkipCount = 0,
+    int MaxResultCount = 7)
+        {
+            var query = _context.EggSales
+                .Include(s => s.Trader)
+                .Include(s => s.Warehouse)
+                .Include(s => s.WarehouseTransactions)
+                .OrderByDescending(s => s.Id);
+
+            var totalCount = await query.CountAsync();
+
+            var salesList = await query
+                .Skip(SkipCount)
+                .Take(MaxResultCount)
+                .ToListAsync();
+
+            var result = salesList.Select(s => new EggSaleLiteDto
+            {
+                Id = s.Id,
+                TraderName = s.Trader != null ? s.Trader.Name : "غير معروف",
+                WarehouseName = s.Warehouse != null ? s.Warehouse.Name : "غير معروف",
+                Date = s.Date,
+                Quantity = s.Quantity,
                 EggQuality = s.WarehouseTransactions.FirstOrDefault()?.EggQuality.ToArabic()
             }).ToList();
 

@@ -11,11 +11,12 @@ namespace FarmManagement.API.DTOs
         public decimal EggsGood { get; set; }
         public decimal EggsBroken { get; set; }
         public decimal EggsDouble { get; set; }
+        public decimal EggsFarza { get; set; }
         public decimal EggsTotal { get; set; }
 
         // النافق والمستهلك
         public int DeadCount { get; set; }
-        public int FeedConsumed { get; set; }
+        public decimal  FeedConsumed { get; set; }
 
         // مبيعات البيض
         public decimal EggsSold { get; set; }

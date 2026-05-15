@@ -1,0 +1,1245 @@
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace FarmManagement.API.Migrations
+{
+    /// <inheritdoc />
+    public partial class InitialCreate : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.CreateTable(
+                name: "AppUsers",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Username = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    PasswordHash = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    UserType = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AppUsers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AssetItems",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AssetItems", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Breeds",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Breeds", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "EggProductionSettings",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    BreedId = table.Column<int>(type: "int", nullable: false),
+                    WeekStart = table.Column<int>(type: "int", nullable: false),
+                    WeekEnd = table.Column<int>(type: "int", nullable: false),
+                    TargetProductionPercent = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_EggProductionSettings", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "EvaluationItems",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    MaxScore = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_EvaluationItems", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Farms",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Farms", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "FeedTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FeedTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Items",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    PricePerTon = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    ItemType = table.Column<int>(type: "int", nullable: false),
+                    FeedTypeId = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Items", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TraderLedgers",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    TraderId = table.Column<int>(type: "int", nullable: false),
+                    Date = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Debit = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    Credit = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    Balance = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    Notes = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TraderLedgers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Traders",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Mobile = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Balance = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    Type = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Traders", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Workers",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Phone = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    Role = table.Column<int>(type: "int", nullable: false),
+                    Salary = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    VacationDays = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Workers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "FeedConsumptionSettings",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    BreedId = table.Column<int>(type: "int", nullable: false),
+                    WeekStart = table.Column<int>(type: "int", nullable: false),
+                    WeekEnd = table.Column<int>(type: "int", nullable: false),
+                    TargetPerBirdGram = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FeedConsumptionSettings", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_FeedConsumptionSettings_Breeds_BreedId",
+                        column: x => x.BreedId,
+                        principalTable: "Breeds",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TargetMortalitySettings",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    BreedId = table.Column<int>(type: "int", nullable: false),
+                    WeekStart = table.Column<int>(type: "int", nullable: false),
+                    WeekEnd = table.Column<int>(type: "int", nullable: false),
+                    ExpectedMortalityRate = table.Column<decimal>(type: "decimal(5,2)", precision: 5, scale: 2, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TargetMortalitySettings", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_TargetMortalitySettings_Breeds_BreedId",
+                        column: x => x.BreedId,
+                        principalTable: "Breeds",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AssetWarehouses",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    FarmId = table.Column<int>(type: "int", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AssetWarehouses", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AssetWarehouses_Farms_FarmId",
+                        column: x => x.FarmId,
+                        principalTable: "Farms",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Barns",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Type = table.Column<int>(type: "int", nullable: false),
+                    FarmId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Barns", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Barns_Farms_FarmId",
+                        column: x => x.FarmId,
+                        principalTable: "Farms",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Warehouses",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    FarmId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Warehouses", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Warehouses_Farms_FarmId",
+                        column: x => x.FarmId,
+                        principalTable: "Farms",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "FeedMixes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    FeedTypeId = table.Column<int>(type: "int", nullable: false),
+                    WarehouseId = table.Column<int>(type: "int", nullable: false),
+                    TotalWeight = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    TotalPrice = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    Quantity = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FeedMixes", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_FeedMixes_FeedTypes_FeedTypeId",
+                        column: x => x.FeedTypeId,
+                        principalTable: "FeedTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Advances",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    WorkerId = table.Column<int>(type: "int", nullable: false),
+                    Amount = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    Date = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CumulativeAmount = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Advances", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Advances_Workers_WorkerId",
+                        column: x => x.WorkerId,
+                        principalTable: "Workers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CashBoxTransactions",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Date = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Type = table.Column<int>(type: "int", nullable: false),
+                    Category = table.Column<int>(type: "int", nullable: false),
+                    Amount = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    Notes = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    TraderId = table.Column<int>(type: "int", nullable: true),
+                    WorkerId = table.Column<int>(type: "int", nullable: true),
+                    WarehouseId = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CashBoxTransactions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CashBoxTransactions_Traders_TraderId",
+                        column: x => x.TraderId,
+                        principalTable: "Traders",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_CashBoxTransactions_Workers_WorkerId",
+                        column: x => x.WorkerId,
+                        principalTable: "Workers",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Salaries",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    WorkerId = table.Column<int>(type: "int", nullable: false),
+                    Month = table.Column<int>(type: "int", nullable: false),
+                    Year = table.Column<int>(type: "int", nullable: false),
+                    BaseSalary = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    TotalAdvances = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    NetSalary = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    Date = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Salaries", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Salaries_Workers_WorkerId",
+                        column: x => x.WorkerId,
+                        principalTable: "Workers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Vacations",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    WorkerId = table.Column<int>(type: "int", nullable: false),
+                    StartDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    EndDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Days = table.Column<int>(type: "int", nullable: false),
+                    CumulativeDays = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Vacations", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Vacations_Workers_WorkerId",
+                        column: x => x.WorkerId,
+                        principalTable: "Workers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AssetWarehouseItems",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    AssetItemId = table.Column<int>(type: "int", nullable: false),
+                    AssetWarehouseId = table.Column<int>(type: "int", nullable: false),
+                    Quantity = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    InBarnsQuantity = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    UnitPrice = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    TotalValue = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AssetWarehouseItems", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AssetWarehouseItems_AssetItems_AssetItemId",
+                        column: x => x.AssetItemId,
+                        principalTable: "AssetItems",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_AssetWarehouseItems_AssetWarehouses_AssetWarehouseId",
+                        column: x => x.AssetWarehouseId,
+                        principalTable: "AssetWarehouses",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Cycles",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    FarmId = table.Column<int>(type: "int", nullable: false),
+                    BarnId = table.Column<int>(type: "int", nullable: false),
+                    BarnManagerId = table.Column<int>(type: "int", nullable: true),
+                    BarnWorkerId = table.Column<int>(type: "int", nullable: true),
+                    StartDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    EndDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ChickCount = table.Column<int>(type: "int", nullable: false),
+                    ChickAge = table.Column<int>(type: "int", nullable: false),
+                    TotalMortality = table.Column<int>(type: "int", nullable: false),
+                    TotalCulled = table.Column<int>(type: "int", nullable: false),
+                    BreedId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Cycles", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Cycles_Barns_BarnId",
+                        column: x => x.BarnId,
+                        principalTable: "Barns",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Cycles_Breeds_BreedId",
+                        column: x => x.BreedId,
+                        principalTable: "Breeds",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Cycles_Farms_FarmId",
+                        column: x => x.FarmId,
+                        principalTable: "Farms",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Cycles_Workers_BarnManagerId",
+                        column: x => x.BarnManagerId,
+                        principalTable: "Workers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Cycles_Workers_BarnWorkerId",
+                        column: x => x.BarnWorkerId,
+                        principalTable: "Workers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "EggSales",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    WarehouseId = table.Column<int>(type: "int", nullable: false),
+                    TraderId = table.Column<int>(type: "int", nullable: false),
+                    Date = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Quantity = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    UnitPrice = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 6, nullable: false),
+                    TotalPrice = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 6, nullable: false),
+                    PaidAmount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 6, nullable: false),
+                    RemainingAmount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 6, nullable: false),
+                    Notes = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_EggSales", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_EggSales_Traders_TraderId",
+                        column: x => x.TraderId,
+                        principalTable: "Traders",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_EggSales_Warehouses_WarehouseId",
+                        column: x => x.WarehouseId,
+                        principalTable: "Warehouses",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "WarehouseItems",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    WarehouseId = table.Column<int>(type: "int", nullable: false),
+                    ItemId = table.Column<int>(type: "int", nullable: false),
+                    Quantity = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    PricePerUnit = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    Withdrawn = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    Type = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    EggQuality = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_WarehouseItems", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_WarehouseItems_Items_ItemId",
+                        column: x => x.ItemId,
+                        principalTable: "Items",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_WarehouseItems_Warehouses_WarehouseId",
+                        column: x => x.WarehouseId,
+                        principalTable: "Warehouses",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "FeedMixConsumptions",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    FeedMixId = table.Column<int>(type: "int", nullable: false),
+                    WarehouseId = table.Column<int>(type: "int", nullable: false),
+                    ItemId = table.Column<int>(type: "int", nullable: false),
+                    Quantity = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FeedMixConsumptions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_FeedMixConsumptions_FeedMixes_FeedMixId",
+                        column: x => x.FeedMixId,
+                        principalTable: "FeedMixes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "FeedMixDetails",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ItemId = table.Column<int>(type: "int", nullable: false),
+                    Quantity = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    Price = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    FeedMixId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FeedMixDetails", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_FeedMixDetails_FeedMixes_FeedMixId",
+                        column: x => x.FeedMixId,
+                        principalTable: "FeedMixes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_FeedMixDetails_Items_ItemId",
+                        column: x => x.ItemId,
+                        principalTable: "Items",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AssetTransactions",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    AssetWarehouseItemId = table.Column<int>(type: "int", nullable: false),
+                    TargetBarnId = table.Column<int>(type: "int", nullable: false),
+                    Quantity = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    TransactionType = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Date = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AssetTransactions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AssetTransactions_AssetWarehouseItems_AssetWarehouseItemId",
+                        column: x => x.AssetWarehouseItemId,
+                        principalTable: "AssetWarehouseItems",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_AssetTransactions_Barns_TargetBarnId",
+                        column: x => x.TargetBarnId,
+                        principalTable: "Barns",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ChickenSales",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    CycleId = table.Column<int>(type: "int", nullable: false),
+                    TraderId = table.Column<int>(type: "int", nullable: false),
+                    Date = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Quantity = table.Column<int>(type: "int", nullable: false),
+                    UnitPrice = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    TotalPrice = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    PaidAmount = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    RemainingAmount = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    Notes = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ChickenSales", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ChickenSales_Cycles_CycleId",
+                        column: x => x.CycleId,
+                        principalTable: "Cycles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ChickenSales_Traders_TraderId",
+                        column: x => x.TraderId,
+                        principalTable: "Traders",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CycleEvaluations",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    CycleId = table.Column<int>(type: "int", nullable: false),
+                    Date = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CycleEvaluations", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CycleEvaluations_Cycles_CycleId",
+                        column: x => x.CycleId,
+                        principalTable: "Cycles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "DailyRecords",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    CycleId = table.Column<int>(type: "int", nullable: false),
+                    Date = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    DayNumber = table.Column<int>(type: "int", nullable: false),
+                    ChickAge = table.Column<int>(type: "int", nullable: false),
+                    DeadCount = table.Column<int>(type: "int", nullable: false),
+                    DeadCumulative = table.Column<int>(type: "int", nullable: false),
+                    RemainingChicks = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_DailyRecords", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_DailyRecords_Cycles_CycleId",
+                        column: x => x.CycleId,
+                        principalTable: "Cycles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "EggProductionRecords",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    FarmId = table.Column<int>(type: "int", nullable: false),
+                    BarnId = table.Column<int>(type: "int", nullable: false),
+                    CycleId = table.Column<int>(type: "int", nullable: false),
+                    Date = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    LiveBirdsCount = table.Column<int>(type: "int", nullable: false),
+                    TotalEggs = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    ProductionRate = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    Notes = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_EggProductionRecords", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_EggProductionRecords_Barns_BarnId",
+                        column: x => x.BarnId,
+                        principalTable: "Barns",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_EggProductionRecords_Cycles_CycleId",
+                        column: x => x.CycleId,
+                        principalTable: "Cycles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_EggProductionRecords_Farms_FarmId",
+                        column: x => x.FarmId,
+                        principalTable: "Farms",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "WarehouseTransactions",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    WarehouseId = table.Column<int>(type: "int", nullable: false),
+                    TraderId = table.Column<int>(type: "int", nullable: true),
+                    ItemId = table.Column<int>(type: "int", nullable: false),
+                    Quantity = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    PricePerTon = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    TotalPrice = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    PaidAmount = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    Date = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    TransactionType = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    EggProductionRecordId = table.Column<int>(type: "int", nullable: true),
+                    EggSaleId = table.Column<int>(type: "int", nullable: true),
+                    EggQuality = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_WarehouseTransactions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_WarehouseTransactions_EggSales_EggSaleId",
+                        column: x => x.EggSaleId,
+                        principalTable: "EggSales",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_WarehouseTransactions_Items_ItemId",
+                        column: x => x.ItemId,
+                        principalTable: "Items",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_WarehouseTransactions_Traders_TraderId",
+                        column: x => x.TraderId,
+                        principalTable: "Traders",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_WarehouseTransactions_Warehouses_WarehouseId",
+                        column: x => x.WarehouseId,
+                        principalTable: "Warehouses",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CycleEvaluationDetails",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    CycleEvaluationId = table.Column<int>(type: "int", nullable: false),
+                    EvaluationItemId = table.Column<int>(type: "int", nullable: false),
+                    Score = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CycleEvaluationDetails", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CycleEvaluationDetails_CycleEvaluations_CycleEvaluationId",
+                        column: x => x.CycleEvaluationId,
+                        principalTable: "CycleEvaluations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_CycleEvaluationDetails_EvaluationItems_EvaluationItemId",
+                        column: x => x.EvaluationItemId,
+                        principalTable: "EvaluationItems",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "DailyFeedConsumptions",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    DailyRecordId = table.Column<int>(type: "int", nullable: false),
+                    ItemId = table.Column<int>(type: "int", nullable: false),
+                    Quantity = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    Cost = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_DailyFeedConsumptions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_DailyFeedConsumptions_DailyRecords_DailyRecordId",
+                        column: x => x.DailyRecordId,
+                        principalTable: "DailyRecords",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_DailyFeedConsumptions_Items_ItemId",
+                        column: x => x.ItemId,
+                        principalTable: "Items",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "DailyMedicineConsumptions",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    DailyRecordId = table.Column<int>(type: "int", nullable: false),
+                    ItemId = table.Column<int>(type: "int", nullable: false),
+                    Quantity = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    Cost = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_DailyMedicineConsumptions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_DailyMedicineConsumptions_DailyRecords_DailyRecordId",
+                        column: x => x.DailyRecordId,
+                        principalTable: "DailyRecords",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_DailyMedicineConsumptions_Items_ItemId",
+                        column: x => x.ItemId,
+                        principalTable: "Items",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "EggProductionDetail",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    EggProductionRecordId = table.Column<int>(type: "int", nullable: false),
+                    EggQuality = table.Column<int>(type: "int", nullable: false),
+                    CartonsCount = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false),
+                    TotalEggs = table.Column<decimal>(type: "decimal(18,6)", precision: 18, scale: 6, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_EggProductionDetail", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_EggProductionDetail_EggProductionRecords_EggProductionRecordId",
+                        column: x => x.EggProductionRecordId,
+                        principalTable: "EggProductionRecords",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Advances_WorkerId",
+                table: "Advances",
+                column: "WorkerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AssetTransactions_AssetWarehouseItemId",
+                table: "AssetTransactions",
+                column: "AssetWarehouseItemId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AssetTransactions_TargetBarnId",
+                table: "AssetTransactions",
+                column: "TargetBarnId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AssetWarehouseItems_AssetItemId",
+                table: "AssetWarehouseItems",
+                column: "AssetItemId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AssetWarehouseItems_AssetWarehouseId",
+                table: "AssetWarehouseItems",
+                column: "AssetWarehouseId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AssetWarehouses_FarmId",
+                table: "AssetWarehouses",
+                column: "FarmId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Barns_FarmId",
+                table: "Barns",
+                column: "FarmId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CashBoxTransactions_TraderId",
+                table: "CashBoxTransactions",
+                column: "TraderId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CashBoxTransactions_WorkerId",
+                table: "CashBoxTransactions",
+                column: "WorkerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ChickenSales_CycleId",
+                table: "ChickenSales",
+                column: "CycleId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ChickenSales_TraderId",
+                table: "ChickenSales",
+                column: "TraderId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CycleEvaluationDetails_CycleEvaluationId",
+                table: "CycleEvaluationDetails",
+                column: "CycleEvaluationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CycleEvaluationDetails_EvaluationItemId",
+                table: "CycleEvaluationDetails",
+                column: "EvaluationItemId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CycleEvaluations_CycleId",
+                table: "CycleEvaluations",
+                column: "CycleId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Cycles_BarnId",
+                table: "Cycles",
+                column: "BarnId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Cycles_BarnManagerId",
+                table: "Cycles",
+                column: "BarnManagerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Cycles_BarnWorkerId",
+                table: "Cycles",
+                column: "BarnWorkerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Cycles_BreedId",
+                table: "Cycles",
+                column: "BreedId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Cycles_FarmId",
+                table: "Cycles",
+                column: "FarmId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_DailyFeedConsumptions_DailyRecordId",
+                table: "DailyFeedConsumptions",
+                column: "DailyRecordId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_DailyFeedConsumptions_ItemId",
+                table: "DailyFeedConsumptions",
+                column: "ItemId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_DailyMedicineConsumptions_DailyRecordId",
+                table: "DailyMedicineConsumptions",
+                column: "DailyRecordId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_DailyMedicineConsumptions_ItemId",
+                table: "DailyMedicineConsumptions",
+                column: "ItemId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_DailyRecords_CycleId",
+                table: "DailyRecords",
+                column: "CycleId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EggProductionDetail_EggProductionRecordId",
+                table: "EggProductionDetail",
+                column: "EggProductionRecordId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EggProductionRecords_BarnId",
+                table: "EggProductionRecords",
+                column: "BarnId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EggProductionRecords_CycleId",
+                table: "EggProductionRecords",
+                column: "CycleId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EggProductionRecords_FarmId",
+                table: "EggProductionRecords",
+                column: "FarmId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EggSales_TraderId",
+                table: "EggSales",
+                column: "TraderId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EggSales_WarehouseId",
+                table: "EggSales",
+                column: "WarehouseId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FeedConsumptionSettings_BreedId",
+                table: "FeedConsumptionSettings",
+                column: "BreedId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FeedMixConsumptions_FeedMixId",
+                table: "FeedMixConsumptions",
+                column: "FeedMixId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FeedMixDetails_FeedMixId",
+                table: "FeedMixDetails",
+                column: "FeedMixId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FeedMixDetails_ItemId",
+                table: "FeedMixDetails",
+                column: "ItemId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FeedMixes_FeedTypeId",
+                table: "FeedMixes",
+                column: "FeedTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Salaries_WorkerId",
+                table: "Salaries",
+                column: "WorkerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TargetMortalitySettings_BreedId",
+                table: "TargetMortalitySettings",
+                column: "BreedId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Vacations_WorkerId",
+                table: "Vacations",
+                column: "WorkerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WarehouseItems_ItemId",
+                table: "WarehouseItems",
+                column: "ItemId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WarehouseItems_WarehouseId",
+                table: "WarehouseItems",
+                column: "WarehouseId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Warehouses_FarmId",
+                table: "Warehouses",
+                column: "FarmId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WarehouseTransactions_EggSaleId",
+                table: "WarehouseTransactions",
+                column: "EggSaleId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WarehouseTransactions_ItemId",
+                table: "WarehouseTransactions",
+                column: "ItemId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WarehouseTransactions_TraderId",
+                table: "WarehouseTransactions",
+                column: "TraderId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WarehouseTransactions_WarehouseId",
+                table: "WarehouseTransactions",
+                column: "WarehouseId");
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropTable(
+                name: "Advances");
+
+            migrationBuilder.DropTable(
+                name: "AppUsers");
+
+            migrationBuilder.DropTable(
+                name: "AssetTransactions");
+
+            migrationBuilder.DropTable(
+                name: "CashBoxTransactions");
+
+            migrationBuilder.DropTable(
+                name: "ChickenSales");
+
+            migrationBuilder.DropTable(
+                name: "CycleEvaluationDetails");
+
+            migrationBuilder.DropTable(
+                name: "DailyFeedConsumptions");
+
+            migrationBuilder.DropTable(
+                name: "DailyMedicineConsumptions");
+
+            migrationBuilder.DropTable(
+                name: "EggProductionDetail");
+
+            migrationBuilder.DropTable(
+                name: "EggProductionSettings");
+
+            migrationBuilder.DropTable(
+                name: "FeedConsumptionSettings");
+
+            migrationBuilder.DropTable(
+                name: "FeedMixConsumptions");
+
+            migrationBuilder.DropTable(
+                name: "FeedMixDetails");
+
+            migrationBuilder.DropTable(
+                name: "Salaries");
+
+            migrationBuilder.DropTable(
+                name: "TargetMortalitySettings");
+
+            migrationBuilder.DropTable(
+                name: "TraderLedgers");
+
+            migrationBuilder.DropTable(
+                name: "Vacations");
+
+            migrationBuilder.DropTable(
+                name: "WarehouseItems");
+
+            migrationBuilder.DropTable(
+                name: "WarehouseTransactions");
+
+            migrationBuilder.DropTable(
+                name: "AssetWarehouseItems");
+
+            migrationBuilder.DropTable(
+                name: "CycleEvaluations");
+
+            migrationBuilder.DropTable(
+                name: "EvaluationItems");
+
+            migrationBuilder.DropTable(
+                name: "DailyRecords");
+
+            migrationBuilder.DropTable(
+                name: "EggProductionRecords");
+
+            migrationBuilder.DropTable(
+                name: "FeedMixes");
+
+            migrationBuilder.DropTable(
+                name: "EggSales");
+
+            migrationBuilder.DropTable(
+                name: "Items");
+
+            migrationBuilder.DropTable(
+                name: "AssetItems");
+
+            migrationBuilder.DropTable(
+                name: "AssetWarehouses");
+
+            migrationBuilder.DropTable(
+                name: "Cycles");
+
+            migrationBuilder.DropTable(
+                name: "FeedTypes");
+
+            migrationBuilder.DropTable(
+                name: "Traders");
+
+            migrationBuilder.DropTable(
+                name: "Warehouses");
+
+            migrationBuilder.DropTable(
+                name: "Barns");
+
+            migrationBuilder.DropTable(
+                name: "Breeds");
+
+            migrationBuilder.DropTable(
+                name: "Workers");
+
+            migrationBuilder.DropTable(
+                name: "Farms");
+        }
+    }
+}

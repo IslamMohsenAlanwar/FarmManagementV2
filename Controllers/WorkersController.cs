@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using FarmManagement.API.Data;
 using FarmManagement.API.Models;
 using FarmManagement.API.DTOs;
+using FarmManagement.API.Enums;
 
 namespace FarmManagement.API.Controllers
 {
@@ -309,61 +310,61 @@ namespace FarmManagement.API.Controllers
         }
 
         // ===================== ADVANCES =====================
-       [HttpPost("advance")]
-public async Task<IActionResult> AddAdvance([FromBody] CreateAdvanceDto dto)
-{
-    await using var transaction = await _context.Database.BeginTransactionAsync();
-
-    try
-    {
-        var worker = await _context.Workers.FindAsync(dto.WorkerId);
-        if (worker == null) 
-            return NotFound("Worker not found");
-
-        var lastCumulative = await _context.Advances
-            .Where(a => a.WorkerId == dto.WorkerId)
-            .OrderByDescending(a => a.Id)
-            .Select(a => a.CumulativeAmount)
-            .FirstOrDefaultAsync();
-
-        var advance = new Advance
+        [HttpPost("advance")]
+        public async Task<IActionResult> AddAdvance([FromBody] CreateAdvanceDto dto)
         {
-            WorkerId = worker.Id,
-            Amount = dto.Amount,
-            Date = dto.Date,
-            CumulativeAmount = lastCumulative + dto.Amount
-        };
+            await using var transaction = await _context.Database.BeginTransactionAsync();
 
-        _context.Advances.Add(advance);
+            try
+            {
+                var worker = await _context.Workers.FindAsync(dto.WorkerId);
+                if (worker == null)
+                    return NotFound("Worker not found");
 
-        // ✅ تسجيلها كمصروف في الخزنة
-        var cashBoxEntry = new CashBoxTransaction
-        {
-            Date = dto.Date,
-            Type = "منصرف",
-            Category = "سلفة",
-            Amount = dto.Amount,
-            Notes = $"سلفة للعامل {worker.Name}",
-            WorkerId = worker.Id
-        };
+                var lastCumulative = await _context.Advances
+                    .Where(a => a.WorkerId == dto.WorkerId)
+                    .OrderByDescending(a => a.Id)
+                    .Select(a => a.CumulativeAmount)
+                    .FirstOrDefaultAsync();
 
-        _context.CashBoxTransactions.Add(cashBoxEntry);
+                var advance = new Advance
+                {
+                    WorkerId = worker.Id,
+                    Amount = dto.Amount,
+                    Date = dto.Date,
+                    CumulativeAmount = lastCumulative + dto.Amount
+                };
 
-        await _context.SaveChangesAsync();
-        await transaction.CommitAsync();
+                _context.Advances.Add(advance);
 
-        return Ok(new
-        {
-            message = "تم تسجيل السلفة وخصمها من الخزنة",
-            advance
-        });
-    }
-    catch
-    {
-        await transaction.RollbackAsync();
-        return BadRequest("حدث خطأ أثناء تسجيل السلفة");
-    }
-}
+                // ✅ تسجيلها كمصروف في الخزنة
+                var cashBoxEntry = new CashBoxTransaction
+                {
+                    Date = dto.Date,
+                    Type = CashBoxType.Expense,
+                    Category = CashBoxCategory.Advance,
+                    Amount = dto.Amount,
+                    Notes = $"سلفة للعامل {worker.Name}",
+                    WorkerId = worker.Id
+                };
+
+                _context.CashBoxTransactions.Add(cashBoxEntry);
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return Ok(new
+                {
+                    message = "تم تسجيل السلفة وخصمها من الخزنة",
+                    advance
+                });
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                return BadRequest("حدث خطأ أثناء تسجيل السلفة");
+            }
+        }
 
         [HttpGet("advances")]
         public async Task<ActionResult> GetAllAdvances([FromQuery] int SkipCount = 0, [FromQuery] int MaxResultCount = 7)
@@ -414,95 +415,93 @@ public async Task<IActionResult> AddAdvance([FromBody] CreateAdvanceDto dto)
             return Ok(advances);
         }
 
-[HttpPost("salary")]
-public async Task<IActionResult> PayMonthlySalary([FromBody] CreateSalaryDto dto)
-{
-    await using var transaction = await _context.Database.BeginTransactionAsync();
-
-    try
-    {
-        var worker = await _context.Workers.FindAsync(dto.WorkerId);
-        if (worker == null)
-            return NotFound("Worker not found");
-
-        // منع تكرار صرف نفس الشهر
-        var alreadyPaid = await _context.Salaries.AnyAsync(s =>
-            s.WorkerId == dto.WorkerId &&
-            s.Month == dto.Month &&
-            s.Year == dto.Year);
-
-        if (alreadyPaid)
-            return BadRequest("تم صرف راتب هذا الشهر بالفعل");
-
-        // إجمالي السلف الحالية
-        var totalAdvances = await _context.Advances
-            .Where(a => a.WorkerId == dto.WorkerId)
-            .OrderByDescending(a => a.Id)
-            .Select(a => a.CumulativeAmount)
-            .FirstOrDefaultAsync();
-
-        var baseSalary = worker.Salary;
-        var netSalary = baseSalary - totalAdvances;
-        if (netSalary < 0) netSalary = 0;
-
-        var salary = new Salary
+        [HttpPost("salary")]
+        public async Task<IActionResult> PayMonthlySalary([FromBody] CreateSalaryDto dto)
         {
-            WorkerId = worker.Id,
-            Month = dto.Month,
-            Year = dto.Year,
-            BaseSalary = baseSalary,
-            TotalAdvances = totalAdvances,
-            NetSalary = netSalary,
-            Date = DateTime.Now
-        };
+            await using var transaction = await _context.Database.BeginTransactionAsync();
 
-        _context.Salaries.Add(salary);
-
-        // تسجيل مصروف في الخزنة
-        var cashBoxEntry = new CashBoxTransaction
-        {
-            Date = DateTime.Now,
-            Type = "منصرف",
-            Category = "راتب",
-            Amount = netSalary,
-            Notes = $"راتب شهر {dto.Month}/{dto.Year} للعامل {worker.Name}",
-            WorkerId = worker.Id
-        };
-
-        _context.CashBoxTransactions.Add(cashBoxEntry);
-
-        // تصفير السلف بعد الخصم
-        if (totalAdvances > 0)
-        {
-            _context.Advances.Add(new Advance
+            try
             {
-                WorkerId = worker.Id,
-                Amount = 0,
-                Date = DateTime.Now,
-                CumulativeAmount = 0
-            });
+                var worker = await _context.Workers.FindAsync(dto.WorkerId);
+                if (worker == null)
+                    return NotFound("Worker not found");
+
+                // منع تكرار صرف نفس الشهر
+                var alreadyPaid = await _context.Salaries.AnyAsync(s =>
+                    s.WorkerId == dto.WorkerId &&
+                    s.Month == dto.Month &&
+                    s.Year == dto.Year);
+
+                if (alreadyPaid)
+                    return BadRequest("تم صرف راتب هذا الشهر بالفعل");
+
+                // إجمالي السلف الحالية
+                var totalAdvances = await _context.Advances
+                    .Where(a => a.WorkerId == dto.WorkerId)
+                    .OrderByDescending(a => a.Id)
+                    .Select(a => a.CumulativeAmount)
+                    .FirstOrDefaultAsync();
+
+                var baseSalary = worker.Salary;
+                var netSalary = baseSalary - totalAdvances;
+                if (netSalary < 0) netSalary = 0;
+
+                var salary = new Salary
+                {
+                    WorkerId = worker.Id,
+                    Month = dto.Month,
+                    Year = dto.Year,
+                    BaseSalary = baseSalary,
+                    TotalAdvances = totalAdvances,
+                    NetSalary = netSalary,
+                    Date = DateTime.Now
+                };
+
+                _context.Salaries.Add(salary);
+
+                // تسجيل مصروف في الخزنة
+                var cashBoxEntry = new CashBoxTransaction
+                {
+                    Date = DateTime.Now,
+                    Type = CashBoxType.Expense,
+                    Category = CashBoxCategory.Salary,
+                    Amount = netSalary,
+                    Notes = $"راتب شهر {dto.Month}/{dto.Year} للعامل {worker.Name}",
+                    WorkerId = worker.Id
+                };
+
+                _context.CashBoxTransactions.Add(cashBoxEntry);
+
+                // تصفير السلف بعد الخصم
+                if (totalAdvances > 0)
+                {
+                    _context.Advances.Add(new Advance
+                    {
+                        WorkerId = worker.Id,
+                        Amount = 0,
+                        Date = DateTime.Now,
+                        CumulativeAmount = 0
+                    });
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return Ok(new
+                {
+                    message = "تم صرف الراتب بنجاح",
+                    baseSalary,
+                    totalAdvances,
+                    netSalary
+                });
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                return BadRequest("حدث خطأ أثناء صرف الراتب");
+            }
         }
-
-        await _context.SaveChangesAsync();
-        await transaction.CommitAsync();
-
-        return Ok(new
-        {
-            message = "تم صرف الراتب بنجاح",
-            baseSalary,
-            totalAdvances,
-            netSalary
-        });
     }
-    catch
-    {
-        await transaction.RollbackAsync();
-        return BadRequest("حدث خطأ أثناء صرف الراتب");
-    }
-}
-
-    }
-
 }
 
 

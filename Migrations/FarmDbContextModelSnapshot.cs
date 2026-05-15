@@ -243,9 +243,8 @@ namespace FarmManagement.API.Migrations
                         .HasPrecision(18, 6)
                         .HasColumnType("decimal(18,6)");
 
-                    b.Property<string>("Category")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("Category")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("Date")
                         .HasColumnType("datetime2");
@@ -256,9 +255,8 @@ namespace FarmManagement.API.Migrations
                     b.Property<int?>("TraderId")
                         .HasColumnType("int");
 
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
 
                     b.Property<int?>("WarehouseId")
                         .HasColumnType("int");
@@ -773,11 +771,42 @@ namespace FarmManagement.API.Migrations
                         .HasPrecision(18, 6)
                         .HasColumnType("decimal(18,6)");
 
+                    b.Property<int>("WarehouseId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("FeedTypeId");
 
                     b.ToTable("FeedMixes");
+                });
+
+            modelBuilder.Entity("FarmManagement.API.Models.FeedMixConsumption", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("FeedMixId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ItemId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<int>("WarehouseId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FeedMixId");
+
+                    b.ToTable("FeedMixConsumptions");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.FeedMixDetail", b =>
@@ -835,6 +864,9 @@ namespace FarmManagement.API.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("FeedTypeId")
+                        .HasColumnType("int");
 
                     b.Property<int>("ItemType")
                         .HasColumnType("int");
@@ -1473,6 +1505,17 @@ namespace FarmManagement.API.Migrations
                         .IsRequired();
 
                     b.Navigation("FeedType");
+                });
+
+            modelBuilder.Entity("FarmManagement.API.Models.FeedMixConsumption", b =>
+                {
+                    b.HasOne("FarmManagement.API.Models.FeedMix", "FeedMix")
+                        .WithMany()
+                        .HasForeignKey("FeedMixId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FeedMix");
                 });
 
             modelBuilder.Entity("FarmManagement.API.Models.FeedMixDetail", b =>

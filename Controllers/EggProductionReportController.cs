@@ -7,6 +7,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using FarmManagement.API.Services;
 
 namespace FarmManagement.API.Controllers
 {
@@ -15,10 +16,14 @@ namespace FarmManagement.API.Controllers
     public class EggProductionReportController : ControllerBase
     {
         private readonly FarmDbContext _context;
+        private readonly IEggProductionReportExportService _exportService;
 
-        public EggProductionReportController(FarmDbContext context)
+        public EggProductionReportController(
+            FarmDbContext context,
+            IEggProductionReportExportService exportService)
         {
             _context = context;
+            _exportService = exportService;
         }
 
         [HttpGet("egg-report")]
@@ -41,51 +46,60 @@ namespace FarmManagement.API.Controllers
             decimal cumulativeActualCartons = 0;
             decimal cumulativeTargetCartons = 0;
 
-            // ================== 🔥 1 QUERY ONLY ==================
+            //  تحميل الإعدادات مرة واحدة
             var settings = await _context.EggProductionSettings
                 .Where(x => x.BreedId == cycle.BreedId)
                 .ToListAsync();
+
+            //  GROUPING الإنتاج حسب التاريخ (أفضل أداء)
+            var eggGrouped = cycle.EggProductionRecords
+                .GroupBy(e => e.Date.Date)
+                .ToDictionary(g => g.Key, g => g.ToList());
 
             foreach (var day in cycle.DailyRecords.OrderBy(d => d.ChickAge))
             {
                 var weekNumber = (int)Math.Ceiling(day.ChickAge / 7.0);
 
-                var eggRecord = cycle.EggProductionRecords
-                    .FirstOrDefault(e => e.Date.Date == day.Date.Date);
+                //  هات كل الإنتاجات في اليوم
+                eggGrouped.TryGetValue(day.Date.Date, out var eggRecords);
 
                 decimal broken = 0;
                 decimal doubleEgg = 0;
                 decimal normal = 0;
+                decimal farza = 0;
 
-                if (eggRecord != null)
+                if (eggRecords != null && eggRecords.Any())
                 {
-                    broken = eggRecord.Details
+                    var allDetails = eggRecords.SelectMany(e => e.Details);
+
+                    broken = allDetails
                         .Where(d => d.EggQuality == EggQualityType.Broken)
                         .Sum(d => d.CartonsCount);
 
-                    doubleEgg = eggRecord.Details
+                    doubleEgg = allDetails
                         .Where(d => d.EggQuality == EggQualityType.Double)
                         .Sum(d => d.CartonsCount);
 
-                    normal = eggRecord.Details
+                    normal = allDetails
                         .Where(d => d.EggQuality == EggQualityType.Normal)
+                        .Sum(d => d.CartonsCount);
+
+                    farza = allDetails
+                        .Where(d => d.EggQuality == EggQualityType.Farza)
                         .Sum(d => d.CartonsCount);
                 }
 
-                var totalActual = broken + doubleEgg + normal;
+                var totalActual = broken + doubleEgg + normal + farza;
                 var liveBirds = day.RemainingChicks;
 
-                // ================= TARGET SETTING (IN MEMORY) =================
-                var setting = settings
-                    .FirstOrDefault(t =>
-                        t.WeekStart <= weekNumber &&
-                        t.WeekEnd >= weekNumber);
+                // ================= TARGET =================
+                var setting = settings.FirstOrDefault(t =>
+                    t.WeekStart <= weekNumber &&
+                    t.WeekEnd >= weekNumber);
 
                 var targetPercent = setting?.TargetProductionPercent ?? 0m;
 
-                // ================= DERIVED VALUES =================
                 var targetPerBird = targetPercent / 100m;
-
                 var targetEggs = liveBirds * targetPerBird;
                 var targetCartons = targetEggs / 30m;
 
@@ -126,6 +140,7 @@ namespace FarmManagement.API.Controllers
                     BrokenCartons = broken,
                     DoubleCartons = doubleEgg,
                     NormalCartons = normal,
+                    FarzaCartons = farza,
                     TotalActualCartons = totalActual,
 
                     TargetCartons = Math.Round(targetCartons, 2),
@@ -157,5 +172,30 @@ namespace FarmManagement.API.Controllers
                 Items = items
             });
         }
+
+
+        [HttpGet("export-excel/{cycleId}")]
+        public async Task<IActionResult> ExportExcel(int cycleId)
+        {
+            var file = await _exportService.ExportReportExcelAsync(cycleId);
+
+            return File(
+                file,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                $"egg-report-{cycleId}.xlsx"
+            );
+        }
+
+        // [HttpGet("export-pdf/{cycleId}")]
+        // public async Task<IActionResult> ExportPdf(int cycleId)
+        // {
+        //     var file = await _exportService.ExportReportPdfAsync(cycleId);
+
+        //     return File(
+        //         file,
+        //         "application/pdf",
+        //         $"egg-report-{cycleId}.pdf"
+        //     );
+        // }
     }
 }
