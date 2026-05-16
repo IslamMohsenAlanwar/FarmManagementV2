@@ -149,26 +149,6 @@ namespace FarmManagement.API.Controllers
             return Ok(new { message = "تم تسجيل المصروف بنجاح", expense });
         }
 
-        //  إضافة إيراد آخر
-        // [HttpPost("income/other")]
-        // public async Task<IActionResult> AddOtherIncome([FromBody] CreateExpenseDto dto)
-        // {
-        //     var date = dto.Date ?? DateTime.Now;
-
-        //     var income = new CashBoxTransaction
-        //     {
-        //         Date = date,
-        //         Type = CashBoxType.Income,
-        //         Category = CashBoxCategory.Other,
-        //         Amount = dto.Amount,
-        //         Notes = dto.Notes
-        //     };
-
-        //     _context.CashBoxTransactions.Add(income);
-        //     await _context.SaveChangesAsync();
-
-        //     return Ok(new { message = "تم تسجيل الإيراد بنجاح", income });
-        // }
         [HttpPost("income/other")]
         public async Task<IActionResult> AddOtherIncome([FromBody] CreateExpenseDto dto)
         {
